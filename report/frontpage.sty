@@ -1,0 +1,54 @@
+\RequirePackage{float}
+\RequirePackage{babel}
+\RequirePackage{minted}
+%Fastsættelse af kommandoen "\mytitle"
+
+\def\fooShowMemberRow{}
+
+\newcommand\fooGroupMemberRow{}
+
+\makeatletter
+\newcommand\addToGroup[2]{%
+  \g@addto@macro\fooGroupMemberRow{#1 & #2 \\}%
+  \def\fooShowMemberRow{1}
+}
+\makeatother
+
+
+\newcommand{\frontpage}[3]{
+\begingroup
+\newlength\drop
+\setlength\drop{0.08\textheight}
+\centering
+\vspace*{\drop}
+\rule{\linewidth}{0.5mm} \\ \vspace*{10pt}
+{\Huge\bfseries #1 %Titel
+}\\[\baselineskip]
+{\scshape \Large #2}  %Undertitel
+\\ \vspace*{10pt}{\scshape \large #3
+}
+\rule{\linewidth}{0.5mm}
+\\[\baselineskip]
+\vfill
+\ifthenelse{\equal{\fooShowMemberRow}{}}{}{
+\begin{table}[H] %Medlemsliste
+    \centering
+    \begin{tabular}{l r}
+        Name & Student Number\\ \hline
+        \fooGroupMemberRow
+        \\
+        \\
+        \\
+
+        Supervisor & Email \\ \hline
+        Lukas Esterle & lukas.esterle@ece.au.dk
+    \end{tabular}
+\end{table}\par}
+\vfill
+\vfill
+{\scshape 
+Department of Electrical and Computer Engineering\\ Aarhus University \\ {\today}  %Dato og sted
+}\par 
+\thispagestyle{empty}
+\vspace*{2\drop}
+\endgroup}

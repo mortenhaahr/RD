@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 include(cmake/functions.cmake)
 
-set(CMAKE_CXX_COMPILER c++) # Must come before project line
+set(CMAKE_CXX_COMPILER clang++) # Must come before project line
 message(STATUS "Using compiler ${CMAKE_CXX_COMPILER}")
 
 # Generate a CompilationDatabase (compile_commands.json file) for our build,

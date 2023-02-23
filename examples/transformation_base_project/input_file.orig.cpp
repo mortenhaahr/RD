@@ -15,7 +15,8 @@ int MkX(double i){
 int main() {
   // Gets detected
   for (int i = 0; i < 10; i++) {
-    if (i == 11)
+    //Next step...  
+    if (MkX(i) == 11)
       return 1;
   }
 

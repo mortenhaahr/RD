@@ -1,0 +1,258 @@
+@video{accuconferenceAutomaticSourceCode2017,
+  title = {Automatic {{C}}++ Source Code Generation with Clang - {{Sergei Sadovnikov}} [{{ACCU}} 2017]},
+  editor = {{ACCU Conference}},
+  date = {2017},
+  url = {https://www.youtube.com/watch?v=aPTyatTI42k},
+  urldate = {2023-02-01},
+  editortype = {director}
+}
+
+@misc{alonStructuralLanguageModels2020,
+  title = {Structural {{Language Models}} of {{Code}}},
+  author = {Alon, Uri and Sadaka, Roy and Levy, Omer and Yahav, Eran},
+  date = {2020-07-29},
+  number = {arXiv:1910.00577},
+  eprint = {1910.00577},
+  eprinttype = {arxiv},
+  primaryclass = {cs, stat},
+  publisher = {{arXiv}},
+  url = {http://arxiv.org/abs/1910.00577},
+  urldate = {2023-01-31},
+  abstract = {We address the problem of any-code completion – generating a missing piece of source code in a given program without any restriction on the vocabulary or structure. We introduce a new approach to any-code completion that leverages the strict syntax of programming languages to model a code snippet as a tree –structural language modeling (SLM). SLM estimates the probability of the program’s abstract syntax tree (AST) by decomposing it into a product of conditional probabilities over its nodes. We present a neural model that computes these conditional probabilities by considering all AST paths leading to a target node. Unlike previous techniques that have severely restricted the kinds of expressions that can be generated in this task, our approach can generate arbitrary code in any programming language. Our model significantly outperforms both seq2seq and a variety of structured approaches in generating Java and C\# code. Our code, data, and trained models are available at http://github.com/tech-srl/ slm-code-generation/. An online demo is available at http://AnyCodeGen.org.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Computer Science - Machine Learning,Computer Science - Programming Languages,Statistics - Machine Learning},
+  note = {Comment: Appeared in ICML'2020},
+  file = {/home/mikkel/Zotero/storage/A9D2AI9T/Alon et al. - 2020 - Structural Language Models of Code.pdf}
+}
+
+@online{asafHowExtractComments2014,
+  type = {Forum post},
+  title = {How to Extract Comments and Match to Declaration with {{RecursiveASTVisitor}} in Libclang C++?},
+  author = {Asaf},
+  date = {2014-08-12},
+  url = {https://stackoverflow.com/q/25275212},
+  urldate = {2023-02-10},
+  organization = {{Stack Overflow}},
+  file = {/home/mikkel/Zotero/storage/7X8CDQAP/how-to-extract-comments-and-match-to-declaration-with-recursiveastvisitor-in-lib.html}
+}
+
+@online{ASTMatcherReference,
+  title = {{{AST Matcher Reference}}},
+  url = {https://clang.llvm.org/docs/LibASTMatchersReference.html},
+  urldate = {2023-02-07},
+  file = {/home/mikkel/Zotero/storage/R463R6D3/LibASTMatchersReference.html}
+}
+
+@incollection{AutomaticProgramming1982,
+  title = {Automatic {{Programming}}},
+  booktitle = {The {{Handbook}} of {{Artificial Intelligence}}},
+  date = {1982},
+  pages = {295--379},
+  publisher = {{Elsevier}},
+  doi = {10.1016/B978-0-86576-090-5.50010-0},
+  url = {https://linkinghub.elsevier.com/retrieve/pii/B9780865760905500100},
+  urldate = {2023-01-31},
+  isbn = {978-0-86576-090-5},
+  langid = {english},
+  file = {/home/mikkel/Zotero/storage/XP9RW39P/1982 - Automatic Programming.pdf}
+}
+
+@misc{chenEvaluatingLargeLanguage2021,
+  title = {Evaluating {{Large Language Models Trained}} on {{Code}}},
+  author = {Chen, Mark and Tworek, Jerry and Jun, Heewoo and Yuan, Qiming and Pinto, Henrique Ponde de Oliveira and Kaplan, Jared and Edwards, Harri and Burda, Yuri and Joseph, Nicholas and Brockman, Greg and Ray, Alex and Puri, Raul and Krueger, Gretchen and Petrov, Michael and Khlaaf, Heidy and Sastry, Girish and Mishkin, Pamela and Chan, Brooke and Gray, Scott and Ryder, Nick and Pavlov, Mikhail and Power, Alethea and Kaiser, Lukasz and Bavarian, Mohammad and Winter, Clemens and Tillet, Philippe and Such, Felipe Petroski and Cummings, Dave and Plappert, Matthias and Chantzis, Fotios and Barnes, Elizabeth and Herbert-Voss, Ariel and Guss, William Hebgen and Nichol, Alex and Paino, Alex and Tezak, Nikolas and Tang, Jie and Babuschkin, Igor and Balaji, Suchir and Jain, Shantanu and Saunders, William and Hesse, Christopher and Carr, Andrew N. and Leike, Jan and Achiam, Josh and Misra, Vedant and Morikawa, Evan and Radford, Alec and Knight, Matthew and Brundage, Miles and Murati, Mira and Mayer, Katie and Welinder, Peter and McGrew, Bob and Amodei, Dario and McCandlish, Sam and Sutskever, Ilya and Zaremba, Wojciech},
+  date = {2021-07-14},
+  number = {arXiv:2107.03374},
+  eprint = {2107.03374},
+  eprinttype = {arxiv},
+  primaryclass = {cs},
+  publisher = {{arXiv}},
+  url = {http://arxiv.org/abs/2107.03374},
+  urldate = {2023-01-31},
+  abstract = {We introduce Codex, a GPT language model finetuned on publicly available code from GitHub, and study its Python code-writing capabilities. A distinct production version of Codex powers GitHub Copilot. On HumanEval, a new evaluation set we release to measure functional correctness for synthesizing programs from docstrings, our model solves 28.8\% of the problems, while GPT-3 solves 0\% and GPT-J solves 11.4\%. Furthermore, we find that repeated sampling from the model is a surprisingly effective strategy for producing working solutions to difficult prompts. Using this method, we solve 70.2\% of our problems with 100 samples per problem. Careful investigation of our model reveals its limitations, including difficulty with docstrings describing long chains of operations and with binding operations to variables. Finally, we discuss the potential broader impacts of deploying powerful code generation technologies, covering safety, security, and economics.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Computer Science - Machine Learning},
+  note = {Comment: corrected typos, added references, added authors, added acknowledgements},
+  file = {/home/mikkel/Zotero/storage/UD6WC5WU/Chen et al. - 2021 - Evaluating Large Language Models Trained on Code.pdf}
+}
+
+@online{ClangTransformerTutorial,
+  title = {Clang {{Transformer Tutorial}} — {{Clang}} 17.0.0git Documentation},
+  url = {https://clang.llvm.org/docs/ClangTransformerTutorial.html},
+  urldate = {2023-02-08},
+  file = {/home/mikkel/Zotero/storage/ABSLNPCW/ClangTransformerTutorial.html}
+}
+
+@online{COMSW4115Programming,
+  title = {{{COMS W4115 Programming Languages}} and {{Translators}}},
+  url = {http://www.cs.columbia.edu/~aho/cs4115/},
+  urldate = {2023-02-03},
+  file = {/home/mikkel/Zotero/storage/CPXSNKUI/cs4115.html}
+}
+
+@video{cppconUsingClangLibASTMatchers2022,
+  title = {Using {{Clang LibASTMatchers}} for {{Compliance}} in {{Codebases}} - {{Jonah Jolley}} - {{CppCon}} 2021},
+  editor = {{CppCon}},
+  date = {2022-03-14},
+  url = {https://www.youtube.com/watch?v=icvNkYextOo},
+  urldate = {2023-02-01},
+  editortype = {director}
+}
+
+@online{CS394PAutomatic,
+  title = {{{CS 394P}}: {{Automatic Programming}}},
+  url = {https://www.cs.utexas.edu/users/novak/cs394p.html},
+  urldate = {2023-01-31},
+  file = {/home/mikkel/Zotero/storage/JT667K6C/cs394p.html}
+}
+
+@online{ExternalClangExamples,
+  title = {External {{Clang Examples}} — {{Clang}} 17.0.0git Documentation},
+  url = {https://clang.llvm.org/docs/ExternalClangExamples.html},
+  urldate = {2023-02-23},
+  file = {/home/mikkel/Zotero/storage/5GSJ9J8V/ExternalClangExamples.html}
+}
+
+@unpublished{gribenkoParsingDocumentationComments2012,
+  title = {Parsing {{Documentation Comments}} in {{Clang}}},
+  author = {Gribenko, Dmitri},
+  date = {2012-11-08},
+  url = {https://llvm.org/devmtg/2012-11/Gribenko_CommentParsing.pdf},
+  eventtitle = {{{LLVM Developers}}’ {{Meeting}}},
+  langid = {english},
+  file = {/home/mikkel/Zotero/storage/2M5JX33C/Gribenko - Parsing Documentation Comments in Clang.pdf}
+}
+
+@misc{guoContentEnhancedBERTbased2020,
+  title = {Content {{Enhanced BERT-based Text-to-SQL Generation}}},
+  author = {Guo, Tong and Gao, Huilin},
+  date = {2020-04-21},
+  number = {arXiv:1910.07179},
+  eprint = {1910.07179},
+  eprinttype = {arxiv},
+  primaryclass = {cs},
+  publisher = {{arXiv}},
+  url = {http://arxiv.org/abs/1910.07179},
+  urldate = {2023-01-31},
+  abstract = {We present a simple methods to leverage the table content for the BERT-based model to solve the text-to-SQL problem. Based on the observation that some of the table content match some words in question string and some of the table header also match some words in question string, we encode two addition feature vector for the deep model. Our methods also benefit the model inference in testing time as the tables are almost the same in training and testing time. We test our model on the WikiSQL dataset and outperform the BERT-based baseline by 3.7\% in logic form and 3.7\% in execution accuracy and achieve stateof-the-art.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Computer Science - Computation and Language},
+  note = {Comment: working in progress},
+  file = {/home/mikkel/Zotero/storage/T53W5NKQ/Guo and Gao - 2020 - Content Enhanced BERT-based Text-to-SQL Generation.pdf}
+}
+
+@inproceedings{jorgensenCodeGenerationPlatform2015,
+  title = {A {{Code Generation Platform}} for {{VDM}}},
+  booktitle = {Proceedings of the 12th Overture Workshop},
+  author = {Jørgensen, Peter Würtz Vinther and Larsen, Morten and Couto, Luis Diogo Monteiro Duarte},
+  editor = {Battle, Nick and Fitzgerald, John},
+  date = {2015-01},
+  series = {University of Newcastle-upon-Tyne. {{Computing}} Science. {{Technical}} Report Series},
+  volume = {CS-TR-1446},
+  publisher = {{University of Newcastle Upon Tyne}},
+  langid = {english},
+  note = {Note: Relevante artikel kan findes på side 122},
+  file = {/home/mikkel/Zotero/storage/K4EEEBJZ/Jørgensen et al. - 2015 - A Code Generation Platform for VDM.pdf}
+}
+
+@online{JSONCompilationDatabase,
+  title = {{{JSON Compilation Database Format Specification}} — {{Clang}} 17.0.0git Documentation},
+  url = {https://clang.llvm.org/docs/JSONCompilationDatabase.html},
+  urldate = {2023-02-16},
+  file = {/home/mikkel/Zotero/storage/5Y6IJPJ5/JSONCompilationDatabase.html}
+}
+
+@software{kristensenMortenhaahrRD2023,
+  title = {Mortenhaahr/{{RD}}},
+  author = {Kristensen, Morten Haahr},
+  date = {2023-02-23T10:17:49Z},
+  origdate = {2023-01-31T12:28:26Z},
+  url = {https://github.com/mortenhaahr/RD},
+  urldate = {2023-02-23}
+}
+
+@inproceedings{legouesSystematicStudyAutomated2012,
+  title = {A Systematic Study of Automated Program Repair: {{Fixing}} 55 out of 105 Bugs for \$8 Each},
+  shorttitle = {A Systematic Study of Automated Program Repair},
+  booktitle = {2012 34th {{International Conference}} on {{Software Engineering}} ({{ICSE}})},
+  author = {Le Goues, Claire and Dewey-Vogt, Michael and Forrest, Stephanie and Weimer, Westley},
+  date = {2012-06},
+  pages = {3--13},
+  publisher = {{IEEE}},
+  location = {{Zurich}},
+  doi = {10.1109/ICSE.2012.6227211},
+  url = {http://ieeexplore.ieee.org/document/6227211/},
+  urldate = {2023-01-31},
+  abstract = {There are more bugs in real-world programs than human programmers can realistically address. This paper evaluates two research questions: “What fraction of bugs can be repaired automatically?” and “How much does it cost to repair a bug automatically?” In previous work, we presented GenProg, which uses genetic programming to repair defects in off-the-shelf C programs. To answer these questions, we: (1) propose novel algorithmic improvements to GenProg that allow it to scale to large programs and find repairs 68\% more often, (2) exploit GenProg’s inherent parallelism using cloud computing resources to provide grounded, humancompetitive cost measurements, and (3) generate a large, indicative benchmark set to use for systematic evaluations. We evaluate GenProg on 105 defects from 8 open-source programs totaling 5.1 million lines of code and involving 10,193 test cases. GenProg automatically repairs 55 of those 105 defects. To our knowledge, this evaluation is the largest available of its kind, and is often two orders of magnitude larger than previous work in terms of code or test suite size or defect count. Public cloud computing prices allow our 105 runs to be reproduced for \$403; a successful repair completes in 96 minutes and costs \$7.32, on average.},
+  eventtitle = {2012 34th {{International Conference}} on {{Software Engineering}} ({{ICSE}} 2012)},
+  isbn = {978-1-4673-1066-6 978-1-4673-1067-3},
+  langid = {english},
+  file = {/home/mikkel/Zotero/storage/FCZTTW2F/Le Goues et al. - 2012 - A systematic study of automated program repair Fi.pdf}
+}
+
+@online{LibToolingClang17,
+  title = {{{LibTooling}} — {{Clang}} 17.0.0git Documentation},
+  url = {https://clang.llvm.org/docs/LibTooling.html},
+  urldate = {2023-02-23},
+  file = {/home/mikkel/Zotero/storage/HLJ4YRPX/LibTooling.html}
+}
+
+@inproceedings{lingLatentPredictorNetworks2016,
+  title = {Latent {{Predictor Networks}} for {{Code Generation}}},
+  booktitle = {Proceedings of the 54th {{Annual Meeting}} of the {{Association}} for {{Computational Linguistics}} ({{Volume}} 1: {{Long Papers}})},
+  author = {Ling, Wang and Blunsom, Phil and Grefenstette, Edward and Hermann, Karl Moritz and Kočiský, Tomáš and Wang, Fumin and Senior, Andrew},
+  date = {2016},
+  pages = {599--609},
+  publisher = {{Association for Computational Linguistics}},
+  location = {{Berlin, Germany}},
+  doi = {10.18653/v1/P16-1057},
+  url = {http://aclweb.org/anthology/P16-1057},
+  urldate = {2023-01-31},
+  abstract = {Many language generation tasks require the production of text conditioned on both structured and unstructured inputs. We present a novel neural network architecture which generates an output sequence conditioned on an arbitrary number of input functions. Crucially, our approach allows both the choice of conditioning context and the granularity of generation, for example characters or tokens, to be marginalised, thus permitting scalable and effective training. Using this framework, we address the problem of generating programming code from a mixed natural language and structured specification. We create two new data sets for this paradigm derived from the collectible trading card games Magic the Gathering and Hearthstone. On these, and a third preexisting corpus, we demonstrate that marginalising multiple predictors allows our model to outperform strong benchmarks.},
+  eventtitle = {Proceedings of the 54th {{Annual Meeting}} of the {{Association}} for {{Computational Linguistics}} ({{Volume}} 1: {{Long Papers}})},
+  langid = {english},
+  file = {/home/mikkel/Zotero/storage/2CUZDTWN/Ling et al. - 2016 - Latent Predictor Networks for Code Generation.pdf}
+}
+
+@online{MatchingClangAST,
+  title = {Matching the {{Clang AST}} — {{Clang}} 17.0.0git Documentation},
+  url = {https://clang.llvm.org/docs/LibASTMatchers.html},
+  urldate = {2023-02-08},
+  file = {/home/mikkel/Zotero/storage/HPUNI4EB/LibASTMatchers.html}
+}
+
+@online{Translators,
+  title = {Translators},
+  url = {https://isaaccomputerscience.org/topics/translators},
+  urldate = {2023-02-03},
+  abstract = {The free online learning platform for GCSE and A level Computer Science students and teachers. Discover our computer science revision and homework questions today.},
+  langid = {english},
+  organization = {{Isaac Computer Science}},
+  file = {/home/mikkel/Zotero/storage/5CRA7YB8/translators.html}
+}
+
+@online{TutorialBuildingTools,
+  title = {Tutorial for Building Tools Using {{LibTooling}} and {{LibASTMatchers}} — {{Clang}} 17.0.0git Documentation},
+  url = {https://clang.llvm.org/docs/LibASTMatchersTutorial.html},
+  urldate = {2023-02-02},
+  file = {/home/mikkel/Zotero/storage/C35UWI9J/LibASTMatchersTutorial.html}
+}
+
+@inproceedings{yinSyntacticNeuralModel2017,
+  title = {A {{Syntactic Neural Model}} for {{General-Purpose Code Generation}}},
+  booktitle = {Proceedings of the 55th {{Annual Meeting}} of the {{Association}} for           {{Computational Linguistics}} ({{Volume}} 1: {{Long Papers}})},
+  author = {Yin, Pengcheng and Neubig, Graham},
+  date = {2017},
+  pages = {440--450},
+  publisher = {{Association for Computational Linguistics}},
+  location = {{Vancouver, Canada}},
+  doi = {10.18653/v1/P17-1041},
+  url = {http://aclweb.org/anthology/P17-1041},
+  urldate = {2023-01-31},
+  abstract = {We consider the problem of parsing natural language descriptions into source code written in a general-purpose programming language like Python. Existing datadriven methods treat this problem as a language generation task without considering the underlying syntax of the target programming language. Informed by previous work in semantic parsing, in this paper we propose a novel neural architecture powered by a grammar model to explicitly capture the target syntax as prior knowledge. Experiments find this an effective way to scale up to generation of complex programs from natural language descriptions, achieving state-of-the-art results that well outperform previous code generation and semantic parsing approaches.},
+  eventtitle = {Proceedings of the 55th {{Annual Meeting}} of the {{Association}} for           {{Computational Linguistics}} ({{Volume}} 1: {{Long Papers}})},
+  langid = {english},
+  file = {/home/mikkel/Zotero/storage/PNJTCUFF/Yin and Neubig - 2017 - A Syntactic Neural Model for General-Purpose Code .pdf}
+}

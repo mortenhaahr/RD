@@ -1,0 +1,30 @@
+\section{Transformer}
+
+Clang provides an interface into its C++ AST called LibTooling. LibTooling is aimed at developers who want to build standalone tools and services that run clang tools.\cite{LibToolingClang17}
+
+Tools that use LibTooling run what is called 'FrontendActions' over the specified code. It is through these frontend actions the tool can interact with the source code. The LibTooling tools work by parsing the command line options the tool is invoked with through the llvm command line parser. These options can be customised to allow the tools to work in a user-defined manner. After the command options are parsed, the tool needs an ASTMatcher. The ASTMatcher is the DSL formula for traversing the Clang C++ AST. There are many different matchers which allow for extensive and custom matching of the AST.\cite{ASTMatcherReference,MatchingClangAST} If the matcher finds a valid C++ AST a call to a user-defined \textit{Consumer} callback is made with the matched AST. This allows the user to further process the AST and to perform the task the tool is meant to solve.
+It is also possible to write custom matchers if the built in ones are not enough to solve the task.
+
+LibTooling is used in many different types of tools such as static analysis tools, code refactoring, language standard migration tools and much more.\cite{ExternalClangExamples}
+
+
+Because the Clang AST is so comprehensive, the Clang development team has provided a construct called a \cppinline{Transformer}. A Transformer is a way to couple a \textit{rule} together with a consumer callback. A rule is a combination of an AST matcher, a \textit{change} and some metadata. A rule could be specified as follows: ''The name 'MkX' is not allowed in our code base, so find all functions with the name 'MkX' and change it to 'MakeX'''.This could be translated into LibTooling rule:
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto RenameFunctionWithInvalidName = makeRule(
+    functionDecl(hasName("MkX")).bind("fun"),
+    changeTo(clang::transformer::name("fun"), cat("MakeX")),
+    cat("The name ``MkX`` is not allowed for functions; the function has been renamed")
+);
+    \end{cppcode}
+    \caption{Example of a LibTooling Rule that renames a method 'MkX' to 'MakeX' and provides a reason for the renaming.}
+    \label{code:080dev:TransformerRuleExample}
+\end{listing}
+
+Where \cppinline{functionDecl(hasName("MkX")).bind("fun")} is the ASTMatcher that matches all function declarations with the name ''MkX'' and binds it to the name ''fun''. The line \\\cppinline{changeTo(clang::transformer::name("fun"), cat("MakeX"))} is specifying the change to be made, which is to change the name of match bound to ''fun'' to ''MakeX''. The last line in \cref{code:080dev:TransformerRuleExample} is the metadata that is associated with this rule. When the rule matches the wanted AST expression it creates a \cppinline{AtomicChange} according to the specified change. 
+
+This is then where the \cppinline{Transformer} comes in. The transformer takes the resulting \cppinline{AtomicChange} and the provided metadata and calls a \textit{Consumer} callback with the findings. In this callback the developers of the tool are then able to provide diagnostic messages and make source code changes, if that is what the tool is providing.\cite{ClangTransformerTutorial}
+
+In the official documentationfrom Clang transformer shown in \cref{code:080dev:TransformerRuleExample} is shown and explained. However there is no officail documentation on how to invoke the transformer and make it write the changes into the existing source code. In the public repository for this R\&D project there is an example folder. This example folder contains multiple examples which shows how to create Clang tools that write the results from a \cppinline{Transformer} onto disk. \cite{kristensenMortenhaahrRD2023}
+

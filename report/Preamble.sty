@@ -104,7 +104,7 @@ sorting=none
 \newenvironment{longlisting}{\captionsetup{type=listing}}{}
 
 % Rename listing caption name
-\renewcommand\listingscaption{Code}
+% \renewcommand\listingscaption{Code}
 
 %----------         Equations       ----------%
 % Danish comma as decimal.
@@ -236,14 +236,15 @@ sorting=none
     \section*{\textbf{Appendiks \arabic{appendix}:} #1}%
     \addcontentsline{toc}{section}{Appendiks \arabic{appendix}: #1}%
 }
-\crefname{listing}{code}{codes}  
-\Crefname{listing}{Code}{Codes}
+% \crefname{listing}{code}{codes}  
+% \Crefname{listing}{Code}{Codes}
 
 \newminted{csharp}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
 \newminted{c}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
 \newminted{python}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
 \newminted{cpp}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
-\newminted{text}{frame=single, breaklines=true, escapeinside=@@}
+\newminted{text}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
+\newminted{bash}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
 % Minted:
 \definecolor{codebg}{rgb}{0.95,0.95,0.95}
 % Inlines:
@@ -251,6 +252,7 @@ sorting=none
 \newmintinline{c}{bgcolor=codebg}
 \newmintinline{python}{bgcolor=codebg}
 \newmintinline{text}{bgcolor=codebg, breaklines=true}
+\newmintinline{bash}{bgcolor=codebg, breaklines=true}
 \newmintinline{cpp}{bgcolor=codebg, breaklines=true}
 
 

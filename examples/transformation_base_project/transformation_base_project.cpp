@@ -53,20 +53,21 @@ private:
     void convertChangesToFileReplacements(ArrayRef<AtomicChange> AtomicChanges) {
         for (const auto &AtomicChange: AtomicChanges) {
             for (const auto &Replacement: AtomicChange.getReplacements()) {
+                // Magic happening on line below that makes changes writable. It seems like we are just adding to a
+                // private map but the changes are not written to disk if the line is outcommented.
+                // TODO: Explain better
                 llvm::Error Err =
                         FilesToReplace[std::string(Replacement.getFilePath())].add(Replacement);
                 //TODO: Handle header insertions
 
                 if (Err) {
-                    llvm::errs() << "Failed to apply changes in " << Replacement.getFilePath() << "! "
-                                 << llvm::toString(std::move(Err)) << "\n";
+                    throw "Failed to apply changes in " + Replacement.getFilePath() + "! "
+                          + llvm::toString(std::move(Err)) + "\n";
                 }
             }
         }
     }
-
     std::map<std::string, Replacements> &FilesToReplace;
-
 };
 
 int main(int argc, const char **argv) {
@@ -84,7 +85,6 @@ int main(int argc, const char **argv) {
     RefactoringTool Tool(
             OptionsParser.getCompilations(),
             OptionsParser.getSourcePathList());
-
 
     //Rule to warn with metadata
     auto WarnInvalidFunctionName = makeRule(
@@ -111,10 +111,8 @@ int main(int argc, const char **argv) {
     auto RenameFunctionAndAllInvocationsOfItRule =
             clang::transformer::applyFirst(
                     {RenameInvalidFunctionNameRule, RenameAllInvocationsOfInvalidFunctionNameRule});
-
     MatchFinder Finder;
     MyConsumer Consumer(Tool.getReplacements());
-
     Transformer Transf{
             RenameFunctionAndAllInvocationsOfItRule,
             Consumer.consumer()
@@ -124,5 +122,26 @@ int main(int argc, const char **argv) {
 
     //Run the tool and save the changes on disk immediately.
     //See clang/tools/clang-rename/ClangRename.cpp:190-237 for other options
-    return Tool.runAndSave(newFrontendActionFactory(&Finder).get());
+    Tool.runAndSave(newFrontendActionFactory(&Finder).get());
+
+    ///
+    /// ALTERNATIVE WAY:\n\n
+    ///
+    /// Alternatively if one wishes to have more control-logic inside the `edits` part of a rule
+    /// It can be done through the ASTMatchers API.
+    /// However, if one wishes to e.g. write changes to disk then
+    /// See below:
+    class FunCallback : public MatchFinder::MatchCallback {
+    public :
+        void run(const MatchFinder::MatchResult &Result) override {
+            std::cout << "Inside FunCallback" << std::endl;
+//            const auto node = Result.Nodes.getNodeAs<clang::functionDecl>("funMatch");
+        }
+    };
+    auto FunMatcher = functionDecl(hasName("MkX")).bind("funMatch");
+    FunCallback Callback;
+    // Using same Finder as Transformer example
+    Finder.addMatcher(FunMatcher, &Callback);
+    // Outcomment line below and comment out the other Tool.runAndSave invocation to try the alternative way
+//    Tool.run(newFrontendActionFactory(&Finder).get());
 }

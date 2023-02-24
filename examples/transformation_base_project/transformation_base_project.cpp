@@ -19,7 +19,7 @@ using ::clang::transformer::node;
 using transformer::noopEdit;
 
 struct MyConsumer {
-
+    // Pass a reference of a map (i.e., one that a Tool uses) and save it in the member
     explicit MyConsumer(std::map<std::string, Replacements> &FilesToReplace) : FilesToReplace(FilesToReplace) {}
 
     auto consumer() {
@@ -53,9 +53,7 @@ private:
     void convertChangesToFileReplacements(ArrayRef<AtomicChange> AtomicChanges) {
         for (const auto &AtomicChange: AtomicChanges) {
             for (const auto &Replacement: AtomicChange.getReplacements()) {
-                // Magic happening on line below that makes changes writable. It seems like we are just adding to a
-                // private map but the changes are not written to disk if the line is outcommented.
-                // TODO: Explain better
+                // Add the Replacement to the map. (The Tool will use it to write the changes.)
                 llvm::Error Err =
                         FilesToReplace[std::string(Replacement.getFilePath())].add(Replacement);
                 //TODO: Handle header insertions
@@ -67,6 +65,7 @@ private:
             }
         }
     }
+    // Reference to a map that the Tool uses
     std::map<std::string, Replacements> &FilesToReplace;
 };
 
@@ -135,7 +134,9 @@ int main(int argc, const char **argv) {
     public :
         void run(const MatchFinder::MatchResult &Result) override {
             std::cout << "Inside FunCallback" << std::endl;
-//            const auto node = Result.Nodes.getNodeAs<clang::functionDecl>("funMatch");
+            // Manipulate the nodes below. Typically, using `Result.Nodes.getNodeAs<T>(ID)`,
+            // But with functionDecl this can be tricky. Alternatively, the map can be retrieved like below.
+            const auto map = Result.Nodes.getMap();
         }
     };
     auto FunMatcher = functionDecl(hasName("MkX")).bind("funMatch");

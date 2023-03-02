@@ -23,12 +23,19 @@ static const int normal_const_array_static[5] {0, 1, 2, 3, 4};
 static int* pointer_array_static[2];
 //static std::array<const int*, 2>
 static const int* const_pointer_array_static[2];
+
+/*
+/// These array types make no sense in a static context, as a static array must have an initializer.... To fix later.
+/// If our tool is to be ran on this, then it will technically produce broken code because the user has made an error.
+/// If variable type arrays are wanted -> use a vector instead!
+
 //static std::array<int* const, 1>
 static int* const non_movable_pointer_array_static[1] = {normal_array_static};
 //static std::array<const int* const, 2>
 static const int* const non_modifyable_non_movable_pointer_array_static[2] = {normal_array_static, normal_const_array_static};
+*/
 
-int main() {
+int main(int argc, const char* argv[]) {
 
     //std::array<int, 5>
     int normal_array[5];
@@ -38,9 +45,11 @@ int main() {
     int* pointer_array[2];
     //std::array<const int*, 2>
     const int* const_pointer_array[2];
+
+    int int_variable_array[argc];
     //std::array<int* const, 2>
-    int* const non_movable_pointer_array[1] = {normal_array};
+    int* const non_movable_pointer_array[1] = {int_variable_array};
     //std::array<const int* const, 2>
-    const int* const non_modifyable_non_movable_pointer_array[2] = {normal_array, normal_const_array};
+    const int* const non_modifyable_non_movable_pointer_array[2] = {int_variable_array, int_variable_array};
 
 }

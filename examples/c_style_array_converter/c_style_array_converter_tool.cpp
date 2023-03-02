@@ -126,7 +126,8 @@ static llvm::Error printNode(StringRef Id, const MatchFinder::MatchResult &Match
 enum class UnaryNodeOperator {
     Describe,
     ArraySize,
-    ArrayType
+    ArrayType,
+    VarStorage
 };
 
 class UnaryOperationStencil : public transformer::StencilInterface {
@@ -145,8 +146,14 @@ public:
                 break;
             case UnaryNodeOperator::ArraySize:
                 OpName = "arraySize";
+                break;
             case UnaryNodeOperator::ArrayType:
                 OpName = "arrayType";
+                break;
+            case UnaryNodeOperator::VarStorage:
+                OpName = "varStorage";
+                break;
+                
         }
         return (OpName + "(\"" + Id + "\")").str();
     }
@@ -180,8 +187,22 @@ public:
                 }
             }
                 break;
+            case UnaryNodeOperator::VarStorage:
+            {
+                auto *var = Match.Nodes.getNodeAs<VarDecl>(Id);
+                if (var) {
+                    auto storage_class = var->getStorageClass();
+                    if (storage_class == StorageClass::SC_None) break;
+
+                    auto duration = var->getStorageClassSpecifierString(storage_class);
+                    *Result += duration;
+                    *Result += " ";
+                }
+            }
+                break;
             case UnaryNodeOperator::Describe:
                 llvm_unreachable("This case is handled at the start of the function");
+                
         }
         return Error::success();
     }
@@ -198,6 +219,12 @@ transformer::Stencil my_array_type(StringRef Id) {
                                                    std::string(Id));
 }
 
+
+transformer::Stencil my_var_storage_duration(StringRef Id) {
+    return std::make_shared<UnaryOperationStencil>(UnaryNodeOperator::VarStorage,
+                                                   std::string(Id));
+}
+
 transformer::Stencil my_describe(StringRef Id) {
     return std::make_shared<UnaryOperationStencil>(UnaryNodeOperator::Describe,
                                                    std::string(Id));
@@ -211,17 +238,9 @@ transformer::RangeSelector my_type(std::string ID){
             return N.takeError();
         auto &Node = *N;
         if (const auto *D = Node.get<VarDecl>()) {
-            auto array = Result.Nodes.getNodeAs<ConstantArrayType>(ID);
-            TypeLoc TLoc = D->getTypeSourceInfo()->getTypeLoc();
-            SourceLocation L = TLoc.getBeginLoc();
-            auto R = CharSourceRange::getTokenRange(L, L);
-            // Verify that the range covers exactly the name.
-            // FIXME: extend this code to support cases like `operator +` or
-            // `foo<int>` for which this range will be too short.  Doing so will
-            // require subcasing `NamedDecl`, because it doesn't provide virtual
-            // access to the \c DeclarationNameInfo.
-//            if (clang::tooling::getText(R, *Result.Context) != D->getName())
-//                return CharSourceRange();
+            auto begin = D->getSourceRange().getBegin();
+            auto end = D->getTypeSpecEndLoc();
+            auto R = CharSourceRange::getTokenRange(begin, end);
             return R;
         }
         return N.takeError();
@@ -260,12 +279,16 @@ int main(int argc, const char **argv) {
 
     auto FindArrays = makeRule(
         ConstArrayFinder,
-        changeTo(my_type("arrayDecl"), cat(
+        changeTo(
+            my_type("arrayDecl"),
+            cat(
+                my_var_storage_duration("arrayDecl"),
                 "std::array<",
                 my_array_type("array"),
                 ", ",
                 my_array_size("array"),
-                "> "
+                "> ",
+                name("arrayDecl")                
             )),
         cat("Array")
     );

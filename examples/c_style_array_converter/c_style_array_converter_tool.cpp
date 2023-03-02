@@ -5,10 +5,13 @@
 #include "clang/Tooling/Transformer/Stencil.h"
 #include "clang/Tooling/Transformer/Transformer.h"
 #include "clang/ASTMatchers/ASTMatchersMacros.h"
+#include "clang/Tooling/Transformer/SourceCode.h"
+
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
 
 #include <iostream>
+#include <sstream>
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -18,6 +21,7 @@ using namespace llvm;
 using ::clang::transformer::cat;
 using ::clang::transformer::node;
 using transformer::noopEdit;
+using transformer::name;
 
 struct MyConsumer {
 
@@ -25,7 +29,6 @@ struct MyConsumer {
 
     auto consumer() {
         return [this](Expected<TransformerResult<std::string>> C) {
-            std::cout << "Here\n";
             if (not C) {
                 throw "Error generating changes: " + llvm::toString(C.takeError()) + "\n";
             }
@@ -97,16 +100,133 @@ void callback(const MatchFinder::MatchResult &Result) {
     std::cout << "Hello from free method" << std::endl;
 }
 
-namespace myMatchers {
 
-AST_MATCHER_P(ConstantArrayType, hasSizeType, clang::ast_matchers::internal::Matcher<Expr>,
-              InnerMatcher) {
-  return InnerMatcher.matches(*Node.getSizeExpr(), Finder, Builder);
+static llvm::Expected<DynTypedNode> getNode(const BoundNodes &Nodes,
+                                            StringRef Id) {
+    auto &NodesMap = Nodes.getMap();
+    auto It = NodesMap.find(Id);
+    if (It == NodesMap.end())
+        return llvm::make_error<llvm::StringError>(llvm::errc::invalid_argument,
+                                                   "Id not bound: " + Id);
+    return It->second;
 }
+
+static llvm::Error printNode(StringRef Id, const MatchFinder::MatchResult &Match,
+                       std::string *Result) {
+    std::string Output;
+    llvm::raw_string_ostream Os(Output);
+    auto NodeOrErr = getNode(Match.Nodes, Id);
+    if (auto Err = NodeOrErr.takeError())
+        return Err;
+    NodeOrErr->print(Os, PrintingPolicy(Match.Context->getLangOpts()));
+    *Result += Os.str();
+    return Error::success();
+}
+
+enum class UnaryNodeOperator {
+    Describe,
+    ArraySize,
+    ArrayType
+};
+
+class UnaryOperationStencil : public transformer::StencilInterface {
+    UnaryNodeOperator Op;
+    std::string Id;
+
+public:
+    UnaryOperationStencil(UnaryNodeOperator Op, std::string Id)
+            : Op(Op), Id(std::move(Id)) {}
+
+    std::string toString() const override {
+        StringRef OpName;
+        switch (Op) {
+            case UnaryNodeOperator::Describe:
+                OpName = "describe";
+                break;
+            case UnaryNodeOperator::ArraySize:
+                OpName = "arraySize";
+            case UnaryNodeOperator::ArrayType:
+                OpName = "arrayType";
+        }
+        return (OpName + "(\"" + Id + "\")").str();
+    }
+
+    Error eval(const MatchFinder::MatchResult &Match,
+               std::string *Result) const override {
+        // The `Describe` operation can be applied to any node, not just
+        // expressions, so it is handled here, separately.
+        if (Op == UnaryNodeOperator::Describe)
+            return printNode(Id, Match, Result);
+
+        switch (Op) {
+            case UnaryNodeOperator::ArraySize:
+            {
+                auto array = Match.Nodes.getNodeAs<ConstantArrayType>(Id);
+                if(array){
+                    auto size = array->getSize().getZExtValue();
+                    std::stringstream ss;
+                    ss << size;
+                    *Result += ss.str();
+                }
+            }
+                break;
+            case UnaryNodeOperator::ArrayType:
+            {
+                auto array = Match.Nodes.getNodeAs<ConstantArrayType>(Id);
+                if(array){
+                    auto arr_t = array->getElementType();
+                    std::cout << "getElementType: " <<  arr_t.getAsString() << std::endl;
+                    *Result += arr_t.getAsString();
+                }
+            }
+                break;
+            case UnaryNodeOperator::Describe:
+                llvm_unreachable("This case is handled at the start of the function");
+        }
+        return Error::success();
+    }
+};
+
+
+transformer::Stencil my_array_size(StringRef Id) {
+    return std::make_shared<UnaryOperationStencil>(UnaryNodeOperator::ArraySize,
+                                                   std::string(Id));
+}
+
+transformer::Stencil my_array_type(StringRef Id) {
+    return std::make_shared<UnaryOperationStencil>(UnaryNodeOperator::ArrayType,
+                                                   std::string(Id));
+}
+
+transformer::Stencil my_describe(StringRef Id) {
+    return std::make_shared<UnaryOperationStencil>(UnaryNodeOperator::Describe,
+                                                   std::string(Id));
 }
 
 
-
+transformer::RangeSelector my_type(std::string ID){
+    return [ID](const MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
+        Expected<DynTypedNode> N = getNode(Result.Nodes, ID);
+        if (!N)
+            return N.takeError();
+        auto &Node = *N;
+        if (const auto *D = Node.get<VarDecl>()) {
+            auto array = Result.Nodes.getNodeAs<ConstantArrayType>(ID);
+            TypeLoc TLoc = D->getTypeSourceInfo()->getTypeLoc();
+            SourceLocation L = TLoc.getBeginLoc();
+            auto R = CharSourceRange::getTokenRange(L, L);
+            // Verify that the range covers exactly the name.
+            // FIXME: extend this code to support cases like `operator +` or
+            // `foo<int>` for which this range will be too short.  Doing so will
+            // require subcasing `NamedDecl`, because it doesn't provide virtual
+            // access to the \c DeclarationNameInfo.
+//            if (clang::tooling::getText(R, *Result.Context) != D->getName())
+//                return CharSourceRange();
+            return R;
+        }
+        return N.takeError();
+    };
+}
 
 
 int main(int argc, const char **argv) {
@@ -125,19 +245,11 @@ int main(int argc, const char **argv) {
             OptionsParser.getCompilations(),
             OptionsParser.getSourcePathList());
 
-    /*
-    auto ConstantArrayMatcher = varDecl(
-        isExpansionInMainFile(),
-        hasType(constantArrayType(hasElementType(type(anything()).bind("elemType"))).bind("array"))
-    ).bind("arrayDecl");
- 
-    */
-    
+
     auto ConstArrayFinder = varDecl(
             isExpansionInMainFile(),
             hasType(
                 constantArrayType(
-                    hasElementType(type(anything()).bind("elemType"))
                     //hasInitStatement
                     //hasSizeType(type(integerLiteral).bind("size"))
                     //hasSizeExpr(type(integerLiteral()).bind("size"))
@@ -148,123 +260,36 @@ int main(int argc, const char **argv) {
 
     auto FindArrays = makeRule(
         ConstArrayFinder,
-        noopEdit(node("arrayDecl")),
+        changeTo(my_type("arrayDecl"), cat(
+                "std::array<",
+                my_array_type("array"),
+                ", ",
+                my_array_size("array"),
+                "> "
+            )),
         cat("Array")
     );
 
     MatchFinder Finder;
     MyConsumer Consumer(Tool.getReplacements());
-    
-    
-    
+
+
+
     MyTransformer Transf{
             FindArrays,
             Consumer.consumer()
     };
     Transf.set_callback(callback);
 
-/*
+
     Transf.registerMatchers(&Finder);
-    
+
 
     //Run the tool and save the changes on disk immediately.
     //See clang/tools/clang-rename/ClangRename.cpp:190-237 for other options
-    Tool.run(newFrontendActionFactory(&Finder).get());
-    
+    Tool.runAndSave(newFrontendActionFactory(&Finder).get());
+
     return 0;
-*/
-    
-    
-    
-    
-    ///
-    /// ALTERNATIVE WAY:\n\n
-    ///
-    /// Alternatively if one wishes to have more control-logic inside the `edits` part of a rule
-    /// It can be done through the ASTMatchers API.
-    /// However, if one wishes to e.g. write changes to disk then
-    /// See below:
-    class VarCallback : public MatchFinder::MatchCallback {
-    public :
-        void run(const MatchFinder::MatchResult &Result) override {
-            auto context = Result.Context;
-            std::cout << "Inside VarCallback" << std::endl;
-
-            if (auto sz = Result.Nodes.getNodeAs<IntegerLiteral>("size")) {
-                sz->dump();
-                auto x = 42;
-            }
 
 
-            const auto &FS = Result.Nodes.getNodeAs<clang::VarDecl>("arrayDecl");
-
-
-            if (FS) {
-                FS->dump();
-                std::cout << "Init style: " << std::hex << static_cast<int>(FS->getInitStyle()) << "\n";
-                // //std::cout << "Array type: " << FS->getSizeModifier() << "\n";
-                // std::cout << "Size: " << FS->getSize().getZExtValue() << "\n";
-                // std::cout << "Printing the canonical array type: " << FS->getCanonicalTypeInternal().getAsString() << "\n";
-                // std::cout << "Size expr:\n";
-                // (FS->getSizeExpr())->dump();
-                // auto type = FS->getPointeeOrArrayElementType();
-                // std::cout << "ElemType: " << type->getCanonicalTypeInternal().getAsString() << "\n";
-                // //std::cout << "Dumping array type:\n";
-                // //type->dump();
-
-                //FS->getDefinition(*context)->dump();
-
-                auto info = FS->getTypeSourceInfo();
-                //info->getType().dump();
-                auto type = info->getType().getTypePtr();
-                //type->dump();
-//                auto scalar = type->getScalarTypeKind();
-                auto one_layer_off_wrong = type->getLocallyUnqualifiedSingleStepDesugaredType();
-                //one_layer_off_wrong->dump();
-
-                auto tmp = type->hasSizedVLAType();
-                auto arr = context->getAsConstantArrayType(info->getType());
-                auto size = context->getConstantArrayElementCount(arr);
-
-
-
-                
-            }
-
-            if (auto AS = Result.Nodes.getNodeAs<clang::ConstantArrayType>("array")) {
-                auto elem = AS->getElementType()->getCanonicalTypeInternal().getAsString();
-                auto size = AS->getSize().getZExtValue();
-                //std::cout << "Array type: " << elem << " Array Size: " <<  << "\n";
-                std::cout << "std::array<" << elem << ", " << size << ">\n";
-
-            }
-
-            const auto ES = Result.Nodes.getNodeAs<clang::Type>("elemType");
-            if (ES) {
-                std::cout << "Es found: \n";
-                ES->dump();
-
-                auto x = 42;
-            }
-
-            const auto SS = Result.Nodes.getNodeAs<clang::IntegerLiteral>("arrSubs");
-            if (SS) {
-                std::cout << "SS found:\n";
-                SS->dump();
-            }
-//            const auto node = Result.Nodes.getNodeAs<clang::functionDecl>("funMatch");
-        }
-    };
-    auto FunMatcher = constantArrayType(
-        hasElementType(type(builtinType()).bind("elemType"))
-        //hasSize(integerLiteral(anything()).bind("size"))      
-    ).bind("arrType");
-
-
-
-    VarCallback Callback;
-    // Using same Finder as Transformer example
-    Finder.addMatcher(ConstArrayFinder, &Callback);
-    // Outcomment line below and comment out the other Tool.runAndSave invocation to try the alternative way
-    Tool.run(newFrontendActionFactory(&Finder).get());
 }

@@ -19,7 +19,7 @@ add_compile_options(-fno-rtti)
 
 project(CStyleArrayConverter)
 
-# configure_clang_lib()
+ configure_clang_lib()
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)

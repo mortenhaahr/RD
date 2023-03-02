@@ -247,6 +247,9 @@ transformer::RangeSelector my_type(std::string ID){
     };
 }
 
+namespace myMatcher {
+    AST_MATCHER(Decl, isNotInStdNamespace) { return !Node.isInStdNamespace(); }
+}
 
 int main(int argc, const char **argv) {
     // Configuring the command-line options
@@ -266,15 +269,8 @@ int main(int argc, const char **argv) {
 
 
     auto ConstArrayFinder = varDecl(
-            isExpansionInMainFile(),
-            hasType(
-                constantArrayType(
-                    //hasInitStatement
-                    //hasSizeType(type(integerLiteral).bind("size"))
-                    //hasSizeExpr(type(integerLiteral()).bind("size"))
-                    //myMatchers::hasSize(integerLiteral().bind("size"))
-                    ).bind("array"))
-            //hasInitializer(ignoringImpCasts(integerLiteral().bind("size")))
+            myMatcher::isNotInStdNamespace(),
+            hasType(constantArrayType().bind("array"))
         ).bind("arrayDecl");
 
     auto FindArrays = makeRule(

@@ -27,6 +27,32 @@ add_compile_options(-fno-rtti)@\label{line:080dev:rtti}@
 \end{listing}
 
 \subsection{Linking against libraries}
+\begin{listing}[H]
+    \begin{cmakecode}
+find_package(LLVM REQUIRED CONFIG)
+find_package(Clang REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+include_directories(${LLVM_INCLUDE_DIRS})
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS_LIST})
+
+add_executable(transformer transformation_base_project.cpp)
+
+target_link_libraries(transformer
+    clangAST
+    clangASTMatchers
+    clangBasic
+    clangFrontend
+    clangSerialization
+    clangTooling
+    clangTransformer
+)
+    \end{cmakecode}
+    \caption{CMake code for linking against Clang libraries and adding the headers.}
+    \label{code:080dev:cmake_link_libraries}
+\end{listing}
 
 
 \subsection{Run-time include directories}\label{subsec:080dev:rt_include}

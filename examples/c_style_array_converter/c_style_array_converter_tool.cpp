@@ -12,6 +12,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
+
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -23,6 +25,11 @@ using ::clang::transformer::node;
 using transformer::noopEdit;
 using transformer::name;
 
+#define append_file_line(arg) append_file_line_impl(arg, __FILE__, __LINE__)
+std::string append_file_line_impl(const std::string& what, const char *file, int line){
+    return what + "\nIn file: " + file + " on line: " + std::to_string(line) + "\n";
+}
+
 struct MyConsumer {
 
     explicit MyConsumer(std::map<std::string, Replacements> &FilesToReplace) : FilesToReplace(FilesToReplace) {}
@@ -30,19 +37,15 @@ struct MyConsumer {
     auto RefactorConsumer() {
         return [this](Expected<TransformerResult<std::string>> C) {
             if (not C) {
-                throw "Error generating changes: " + llvm::toString(C.takeError()) + "\n";
+                throw std::runtime_error(append_file_line("Error generating changes: " + llvm::toString(C.takeError()) + "\n"));
             }
-
             //Print the metadata of the change
             std::cout << "Metadata: " << C.get().Metadata << "\n";
-
             //Debug info
             std::cout << "Changes:" << std::endl;
             for (auto changes: C.get().Changes) {
                 std::cout << changes.toYAMLString() << std::endl;
             }
-
-
             //Save the changes to be handled later
             convertChangesToFileReplacements(C.get().Changes);
         };
@@ -67,24 +70,25 @@ private:
                 //TODO: Handle header insertions
 
                 if (Err) {
-                    throw "Failed to apply changes in " + Replacement.getFilePath() + "! "
-                          + llvm::toString(std::move(Err)) + "\n";
+                    throw std::runtime_error(append_file_line("Failed to apply changes in " + Replacement.getFilePath().str() + "! " +
+                                             llvm::toString(std::move(Err)) + "\n"));
                 }
             }
         }
     }
+
     std::map<std::string, Replacements> &FilesToReplace;
 };
 
 
-
+/// Enum of different NodeOperations (used by the Stencil)
 enum class NodeOperator {
-    Describe,
     ArraySize,
     ArrayType,
     VarStorage
 };
 
+/// Stencil for retrieving extra information of a node
 class NodeOperatorStencil : public transformer::StencilInterface {
     NodeOperator Op;
     std::string Id;
@@ -93,13 +97,11 @@ class NodeOperatorStencil : public transformer::StencilInterface {
 public:
     NodeOperatorStencil(NodeOperator Op, std::string Id)
             : Op(Op), Id(std::move(Id)) {}
-        
+
+    /// Required by StencilInterface
     std::string toString() const override {
         StringRef OpName;
         switch (Op) {
-            case NodeOperator::Describe:
-                OpName = "describe";
-                break;
             case NodeOperator::ArraySize:
                 OpName = "arraySize";
                 break;
@@ -109,16 +111,14 @@ public:
             case NodeOperator::VarStorage:
                 OpName = "varStorage";
                 break;
-                
+
         }
         return (OpName + "(\"" + Id + "\")").str();
     }
 
-    Error eval(const MatchFinder::MatchResult &Match,
-               std::string *Result) const override {
+    /// Switch that decides which type of operation to use
+    Error eval(const MatchFinder::MatchResult &Match, std::string *Result) const override {
         switch (Op) {
-            case NodeOperator::Describe:
-                return printNode(Id, Match, Result);
             case NodeOperator::ArraySize:
                 return getConstArraySize(Id, Match, Result);
             case NodeOperator::ArrayType:
@@ -126,95 +126,65 @@ public:
             case NodeOperator::VarStorage:
                 return getVarStorage(Id, Match, Result);
             default:
-                llvm_unreachable("This case is handled at the start of the function");
+                llvm_unreachable("Unsupported NodeOperator");
         }
     }
 
 private:
-    static llvm::Expected<DynTypedNode> getNode(const BoundNodes &Nodes,
-                                            StringRef Id) {
-        auto &NodesMap = Nodes.getMap();
-        auto It = NodesMap.find(Id);
-        if (It == NodesMap.end())
-            return llvm::make_error<llvm::StringError>(llvm::errc::invalid_argument,
-                                                    "Id not bound: " + Id);
-        return It->second;
-    }
 
-    static Error printNode(StringRef Id, const MatchFinder::MatchResult &Match,
-                        std::string *Result) {
-        std::string Output;
-        llvm::raw_string_ostream Os(Output);
-
-        auto NodeOrErr = getNode(Match.Nodes, Id);
-        if (auto Err = NodeOrErr.takeError())
-            return Err;
-
-        NodeOrErr->print(Os, PrintingPolicy(Match.Context->getLangOpts()));
-        *Result += Os.str();
-        return Error::success();
-    }
-
-    static Error getConstArraySize(StringRef Id, const MatchFinder::MatchResult &Match,
-                        std::string *Result) {
+    /// Matches the ID with a ConstantArrayType and appends the size of the array to Result
+    static Error getConstArraySize(StringRef Id, const MatchFinder::MatchResult &Match, std::string *Result) {
         auto array = Match.Nodes.getNodeAs<ConstantArrayType>(Id);
-        if(!array){
-            return llvm::make_error<llvm::StringError>(llvm::errc::invalid_argument, "Id not boud or not ConstantArrayType: " + Id);
+        if (!array) {
+            throw std::invalid_argument(append_file_line("ID not bound or not ConstantArrayType: " + Id.str() + "\n"));
         }
-
         auto size = array->getSize().getZExtValue();
         std::stringstream ss;
         ss << size;
         *Result += ss.str();
-
         return Error::success();
-        
     }
 
-    static Error getArrayElemtType(StringRef Id, const MatchFinder::MatchResult &Match,
-                        std::string *Result) {
+    /// Matches the ID with an ArrayType and appends the type of the array to Result
+    static Error getArrayElemtType(StringRef Id, const MatchFinder::MatchResult &Match, std::string *Result) {
         auto array = Match.Nodes.getNodeAs<ArrayType>(Id);
-        if(!array){
-            return llvm::make_error<llvm::StringError>(llvm::errc::invalid_argument, "Id not boud or not ArrayType: " + Id);
+        if (!array) {
+            throw std::runtime_error(append_file_line("ID not bound or not ArrayType: " + Id.str()));
         }
-
         *Result += array->getElementType().getAsString();
         return Error::success();
     }
 
+    /// Matches the ID of a VarDecl and appends the storage class to Result.
+    /// Appends nothing if storage class is none.
     static Error getVarStorage(StringRef Id, const MatchFinder::MatchResult &Match,
-                        std::string *Result) {
+                               std::string *Result) {
         auto var = Match.Nodes.getNodeAs<VarDecl>(Id);
-        if(!var){
-            return llvm::make_error<llvm::StringError>(llvm::errc::invalid_argument, "Id not boud or not ArrayType: " + Id);
+        if (!var) {
+            throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + Id.str()));
         }
-
         auto storage_class = var->getStorageClass();
         if (storage_class == StorageClass::SC_None) return Error::success();
-
-        auto duration = var->getStorageClassSpecifierString(storage_class);
+        auto duration = VarDecl::getStorageClassSpecifierString(storage_class);
         *Result += duration;
         *Result += " ";
         return Error::success();
     }
-
-
 };
 
+/// Factory for NodeOperatorStencil
 transformer::Stencil nodeOperation(NodeOperator Op, StringRef ID) {
     return std::make_shared<NodeOperatorStencil>(Op, std::string(ID));
 }
 
-
-
-transformer::RangeSelector var_decl_storage_to_type(std::string ID){
+/// Matches the ID of a VarDecl and returns the RangeSelector from storage class to end of the var name.
+/// E.g., `static const std::string str = "Hello"` returns RangeSelector with `static const std::string str`
+transformer::RangeSelector varDeclStorageToEndName(std::string ID) {
     return [ID](const MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
         auto *D = Result.Nodes.getNodeAs<VarDecl>(ID);
-        if (!D) 
-            //Consider printing this instead of the Erorr thing - I can't seem to get the text printed
-            return llvm::make_error<llvm::StringError>(llvm::errc::invalid_argument,
-                                                   "Id not bound or not VarDecl: " + ID);
-        
+        if (!D)
+            throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + ID));
+
         auto begin = D->getSourceRange().getBegin();
         auto end = D->getTypeSpecEndLoc();
         auto R = CharSourceRange::getTokenRange(begin, end);
@@ -223,6 +193,7 @@ transformer::RangeSelector var_decl_storage_to_type(std::string ID){
 }
 
 namespace myMatcher {
+    /// Matches all that is not in the `std` namespace
     /// Inverse of a native Clang matcher: see line 7810 in ASTMatchers.h (isInStdNamespace)
     AST_MATCHER(Decl, isNotInStdNamespace) { return !Node.isInStdNamespace(); }
 }
@@ -247,22 +218,22 @@ int main(int argc, const char **argv) {
     auto ConstArrayFinder = varDecl(
             myMatcher::isNotInStdNamespace(),
             hasType(constantArrayType().bind("array"))
-        ).bind("arrayDecl");
+    ).bind("arrayDecl");
 
     auto FindArrays = makeRule(
-        ConstArrayFinder,
-        changeTo(
-            var_decl_storage_to_type("arrayDecl"),
-            cat(
-                nodeOperation(NodeOperator::VarStorage ,"arrayDecl"),
-                "std::array<",
-                nodeOperation(NodeOperator::ArrayType, ("array")),
-                ", ",
-                nodeOperation(NodeOperator::ArraySize, "array"),
-                "> ",
-                name("arrayDecl")                
-            )),
-        cat("Array")
+            ConstArrayFinder,
+            changeTo(
+                    varDeclStorageToEndName("arrayDecl"),
+                    cat(
+                            nodeOperation(NodeOperator::VarStorage, "arrayDecl"),
+                            "std::array<",
+                            nodeOperation(NodeOperator::ArrayType, ("array")),
+                            ", ",
+                            nodeOperation(NodeOperator::ArraySize, "array"),
+                            "> ",
+                            name("arrayDecl")
+                    )),
+            cat("Array")
     );
 
     MatchFinder Finder;

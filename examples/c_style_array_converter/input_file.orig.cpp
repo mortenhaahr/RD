@@ -61,15 +61,15 @@ int main(int argc, const char* argv[]) {
     const int const_unspecified_array[] = {0, 1, 2, 3};
 
     //std::array<int*, 4>
-    int* int_ptr_unspecified_array[] = {unspecified_array, unspecified_array, unspecified_array, unspecified_array};
+    int* int_ptr_unspecified_array[] = {int_variable_array, int_variable_array, int_variable_array, int_variable_array};
 
     //std::array<const int*, 4>
-    const int* const_int_ptrunspecified_array[] = {const_unspecified_array, const_unspecified_array, const_unspecified_array, const_unspecified_array};
+    const int* const_int_ptrunspecified_array[] = {int_variable_array, int_variable_array, int_variable_array, int_variable_array};
 
     //std::array<int* const, 2>
-    int* const int_ptr_constunspecified_array[] = {unspecified_array, unspecified_array};
+    int* const int_ptr_constunspecified_array[] = {int_variable_array, int_variable_array};
 
     //std::array<const int* const, 2>
-    const int* const const_int_ptr_const_unspecified_array[] = {const_unspecified_array, unspecified_array};
+    const int* const const_int_ptr_const_unspecified_array[] = {int_variable_array, int_variable_array};
 
 }

@@ -30,9 +30,75 @@ std::string append_file_line_impl(const std::string& what, const char *file, int
     return what + "\nIn file: " + file + " on line: " + std::to_string(line) + "\n";
 }
 
+
+struct ArrayRefactoringTool : public ClangTool {
+
+    ArrayRefactoringTool(
+        const CompilationDatabase& Compilations,
+        ArrayRef<std::string> SourcePaths,
+        std::shared_ptr<PCHContainerOperations> PCHContainerOps = 
+            std::make_shared<PCHContainerOperations>()) : ClangTool(Compilations, SourcePaths, std::move(PCHContainerOps)) 
+        {}
+
+    /// Return a reference to the current changes
+    AtomicChanges& getChanges() {return Changes;}
+
+    /// Call run(), apply all generated replacements, and immediately save
+    /// the results to disk.
+    ///
+    /// \returns 0 upon success. Non-zero upon failure.
+    int runAndSave(FrontendActionFactory *ActionFactory) {
+        if (int Result = run(ActionFactory)) {
+            return Result;
+        }
+
+        return applySourceChanges();
+    }
+
+
+    bool applySourceChanges() {
+        std::set<std::string> Files;
+        for (const auto &Change : Changes)
+            Files.insert(Change.getFilePath());
+
+        // FIXME: Add automatic formatting support as well.
+        tooling::ApplyChangesSpec Spec;
+
+        // FIXME: We should probably cleanup the result by default as well.
+        Spec.Cleanup = false;
+        for (const auto &File : Files) {
+            llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> BufferErr =
+                llvm::MemoryBuffer::getFile(File);
+            if (!BufferErr) {
+                llvm::errs() << "error: failed to open " << File << " for rewriting\n";
+                return true;
+            }
+            auto Result = tooling::applyAtomicChanges(File, (*BufferErr)->getBuffer(),
+                                                        Changes, Spec);
+            if (!Result) {
+                llvm::errs() << toString(Result.takeError());
+                return true;
+            }
+
+            std::error_code EC;
+            llvm::raw_fd_ostream OS(File, EC, llvm::sys::fs::OF_TextWithCRLF);
+            if (EC) {
+                llvm::errs() << EC.message() << "\n";
+                return true;
+            }
+            OS << *Result;
+        }
+        return false;
+    }
+
+
+private:
+    AtomicChanges Changes{};
+};
+
 struct MyConsumer {
 
-    explicit MyConsumer(std::map<std::string, Replacements> &FilesToReplace) : FilesToReplace(FilesToReplace) {}
+    explicit MyConsumer(AtomicChanges &Changes) : Changes(Changes) {}
 
     auto RefactorConsumer() {
         return [this](Expected<TransformerResult<std::string>> C) {
@@ -41,43 +107,19 @@ struct MyConsumer {
             }
             //Print the metadata of the change
             std::cout << "Metadata: " << C.get().Metadata << "\n";
+            //Save the changes to be handled later
+            Changes.insert(Changes.begin(), C.get().Changes.begin(), C.get().Changes.end());
+
             //Debug info
             std::cout << "Changes:" << std::endl;
             for (auto changes: C.get().Changes) {
                 std::cout << changes.toYAMLString() << std::endl;
             }
-            //Save the changes to be handled later
-            convertChangesToFileReplacements(C.get().Changes);
         };
     }
 
 private:
-
-    //Convert atomic changes to file replacements
-    //This method is stolen from clang/lib/Tooling/Refactoring/Rename/RenamingAction.cpp:168
-    //The goal of this function is to take all the edits in the atomic changes and
-    //insert them into a map that maps filepaths to replacements. The replacements
-    //can then be applied later. This example uses the functionality of the
-    //clang::tooling::RefactoringTool in order to do the actual replacements on disk.
-    void convertChangesToFileReplacements(ArrayRef<AtomicChange> AtomicChanges) {
-        for (const auto &AtomicChange: AtomicChanges) {
-            for (const auto &Replacement: AtomicChange.getReplacements()) {
-                // Magic happening on line below that makes changes writable. It seems like we are just adding to a
-                // private map but the changes are not written to disk if the line is outcommented.
-                // TODO: Explain better
-                llvm::Error Err =
-                        FilesToReplace[std::string(Replacement.getFilePath())].add(Replacement);
-                //TODO: Handle header insertions
-
-                if (Err) {
-                    throw std::runtime_error(append_file_line("Failed to apply changes in " + Replacement.getFilePath().str() + "! " +
-                                             llvm::toString(std::move(Err)) + "\n"));
-                }
-            }
-        }
-    }
-
-    std::map<std::string, Replacements> &FilesToReplace;
+    AtomicChanges &Changes;
 };
 
 
@@ -210,7 +252,7 @@ int main(int argc, const char **argv) {
     CommonOptionsParser &OptionsParser = ExpectedParser.get();
 
     // Using refactoring tool since it allows `runAndSave` instead of `run`
-    RefactoringTool Tool(
+    ArrayRefactoringTool Tool(
             OptionsParser.getCompilations(),
             OptionsParser.getSourcePathList());
 
@@ -222,6 +264,7 @@ int main(int argc, const char **argv) {
 
     auto FindArrays = makeRule(
             ConstArrayFinder,
+            
             changeTo(
                     varDeclStorageToEndName("arrayDecl"),
                     cat(
@@ -237,7 +280,7 @@ int main(int argc, const char **argv) {
     );
 
     MatchFinder Finder;
-    MyConsumer Consumer(Tool.getReplacements());
+    MyConsumer Consumer(Tool.getChanges());
 
     Transformer Transf{
             FindArrays,
@@ -248,9 +291,5 @@ int main(int argc, const char **argv) {
 
     //Run the tool and save the changes on disk immediately.
     //See clang/tools/clang-rename/ClangRename.cpp:190-237 for other options
-    Tool.runAndSave(newFrontendActionFactory(&Finder).get());
-
-    return 0;
-
-
+    return Tool.runAndSave(newFrontendActionFactory(&Finder).get());
 }

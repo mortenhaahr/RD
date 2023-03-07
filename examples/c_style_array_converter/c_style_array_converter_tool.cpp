@@ -28,7 +28,8 @@ using transformer::noopEdit;
 using transformer::name;
 
 #define append_file_line(arg) append_file_line_impl(arg, __FILE__, __LINE__)
-std::string append_file_line_impl(const std::string& what, const char *file, int line){
+
+std::string append_file_line_impl(const std::string &what, const char *file, int line) {
     return what + "\nIn file: " + file + " on line: " + std::to_string(line) + "\n";
 }
 
@@ -36,14 +37,14 @@ std::string append_file_line_impl(const std::string& what, const char *file, int
 struct ArrayRefactoringTool : public ClangTool {
 
     ArrayRefactoringTool(
-        const CompilationDatabase& Compilations,
-        ArrayRef<std::string> SourcePaths,
-        std::shared_ptr<PCHContainerOperations> PCHContainerOps = 
-            std::make_shared<PCHContainerOperations>()) : ClangTool(Compilations, SourcePaths, std::move(PCHContainerOps)) 
-        {}
+            const CompilationDatabase &Compilations,
+            ArrayRef<std::string> SourcePaths,
+            std::shared_ptr<PCHContainerOperations> PCHContainerOps =
+            std::make_shared<PCHContainerOperations>()) : ClangTool(Compilations, SourcePaths,
+                                                                    std::move(PCHContainerOps)) {}
 
     /// Return a reference to the current changes
-    AtomicChanges& getChanges() {return Changes;}
+    AtomicChanges &getChanges() { return Changes; }
 
     /// Call run(), apply all generated replacements, and immediately save
     /// the results to disk.
@@ -58,8 +59,8 @@ struct ArrayRefactoringTool : public ClangTool {
         IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
         TextDiagnosticPrinter DiagnosticPrinter(llvm::errs(), &*DiagOpts);
         DiagnosticsEngine Diagnostics(
-            IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()),
-            &*DiagOpts, &DiagnosticPrinter, false);
+                IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()),
+                &*DiagOpts, &DiagnosticPrinter, false);
         SourceManager Sources(Diagnostics, getFiles());
         Rewriter Rewrite(Sources, DefaultLangOptions);
 
@@ -82,12 +83,12 @@ struct ArrayRefactoringTool : public ClangTool {
 
         // Split the changes according to filename
         std::map<std::string, AtomicChanges> Files;
-        for (const auto &Change : Changes)
+        for (const auto &Change: Changes)
             Files[Change.getFilePath()].push_back(Change);
 
         //Apply all atomic changes to all files
-        for (const auto &[File, FileChanges] : Files) {
-            
+        for (const auto &[File, FileChanges]: Files) {
+
             // Get File from file manager
             auto Entry = fm.getFileRef(File);
             if (!Entry) {
@@ -101,7 +102,7 @@ struct ArrayRefactoringTool : public ClangTool {
             // Read the current code and apply all the changes that to that file
             auto code = sm.getBufferData(id);
             auto new_code = applyAtomicChanges(File, code, FileChanges, Spec);
-            
+
             if (!new_code) {
                 llvm::errs() << new_code.takeError();
                 return false;
@@ -128,7 +129,8 @@ struct MyConsumer {
     auto RefactorConsumer() {
         return [this](Expected<TransformerResult<std::string>> C) {
             if (not C) {
-                throw std::runtime_error(append_file_line("Error generating changes: " + llvm::toString(C.takeError()) + "\n"));
+                throw std::runtime_error(
+                        append_file_line("Error generating changes: " + llvm::toString(C.takeError()) + "\n"));
             }
             //Print the metadata of the change
             std::cout << "Metadata: " << C.get().Metadata << "\n";
@@ -140,7 +142,7 @@ struct MyConsumer {
             for (auto changes: C.get().Changes) {
                 std::cout << changes.toYAMLString() << std::endl;
             }
-            
+
         };
     }
 
@@ -154,7 +156,7 @@ enum class NodeOperator {
     ArraySize,
     ArrayType,
     VarStorage,
-    NamedDeclQualified
+    DeclQualifier
 };
 
 /// Stencil for retrieving extra information of a node
@@ -180,8 +182,8 @@ public:
             case NodeOperator::VarStorage:
                 OpName = "varStorage";
                 break;
-            case NodeOperator::NamedDeclQualified:
-                OpName = "qualifiedDeclName";
+            case NodeOperator::DeclQualifier:
+                OpName = "declQualifier";
                 break;
         }
         return (OpName + "(\"" + Id + "\")").str();
@@ -196,10 +198,10 @@ public:
                 return getArrayElemtType(Id, Match, Result);
             case NodeOperator::VarStorage:
                 return getVarStorage(Id, Match, Result);
-            case NodeOperator::NamedDeclQualified:
-                return getQualifiedName(Id, Match, Result);
+            case NodeOperator::DeclQualifier:
+                return getDeclQualifier(Id, Match, Result);
             default:
-                throw std::invalid_argument(append_file_line("Unsuported Node operator!\n"));
+                throw std::invalid_argument(append_file_line("Unsupported Node operator!\n"));
         }
     }
 
@@ -228,33 +230,9 @@ private:
         return Error::success();
     }
 
-    static Error getQualifiedName(StringRef Id, const MatchFinder::MatchResult &Match, 
-                                  std::string *Result) {
-        if (auto named = Match.Nodes.getNodeAs<NamedDecl>(Id)) {
-            std::string nested;
-            llvm::raw_string_ostream OS(nested);
-            named->printNestedNameSpecifier(OS);
-            
-            std::cout << "Location: " + named->getLocation().printToString(*Match.SourceManager) << "\n";
-            
-
-            if (named->isInLocalScopeForInstantiation()) std::cout << "Isclass\n";
-
-            std::cout << "Name: " + nested + "\n";
-            *Result += named->getQualifiedNameAsString();
-            return Error::success();
-        }
-
-        throw std::invalid_argument(append_file_line("ID not bound or not NamedDecl: " + Id.str())); 
-
-    }
-
     /// Matches the ID of a VarDecl and appends the storage class to Result.
     /// Appends nothing if storage class is none.
-    static Error getVarStorage(StringRef Id, const MatchFinder::MatchResult &Match,
-                               std::string *Result) {
-        
-
+    static Error getVarStorage(StringRef Id, const MatchFinder::MatchResult &Match, std::string *Result) {
         if (auto field = Match.Nodes.getNodeAs<FieldDecl>(Id)) {
             //Ignore
             return Error::success();
@@ -268,7 +246,28 @@ private:
             return Error::success();
         }
 
-        throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + Id.str()));
+        throw std::invalid_argument(append_file_line("ID not bound or not FieldDecl or VarDecl: " + Id.str()));
+    }
+
+    /// Matches the ID of a DeclaratorDecl and appends the qualifier in front of the name to the Result.
+    /// (In most cases there are no qualifiers)
+    static Error getDeclQualifier(StringRef Id, const MatchFinder::MatchResult &Match, std::string *Result) {
+        auto *D = Match.Nodes.getNodeAs<DeclaratorDecl>(Id);
+        if (!D)
+            throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
+
+        /**
+         * NOTE: Despite the similar names, `getQualifiedName*` and `getDeclQualifier*` does not have
+         * much to do with each other. `getQualifiedName*` refers to the fully qualified name of a node,
+         * i.e., a unique identifier for the node.
+         * `getDeclQualifier*` refers to a potential qualifier in front of the declaration (as it is written in the
+         * source code).
+         */
+        auto qualifierRange = CharSourceRange::getTokenRange(D->getQualifierLoc().getSourceRange());
+        auto qualifierText = getText(qualifierRange, *Match.Context).str();
+
+        *Result += qualifierText;
+        return Error::success();
     }
 };
 
@@ -277,13 +276,13 @@ transformer::Stencil nodeOperation(NodeOperator Op, StringRef ID) {
     return std::make_shared<NodeOperatorStencil>(Op, std::string(ID));
 }
 
-/// Matches the ID of a VarDecl and returns the RangeSelector from storage class to end of the var name.
+/// Matches the ID of a DeclaratorDecl and returns the RangeSelector from storage class to end of the var name.
 /// E.g., `static const std::string str = "Hello"` returns RangeSelector with `static const std::string str`
 transformer::RangeSelector declaratorDeclStorageToEndName(std::string ID) {
     return [ID](const MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
         auto *D = Result.Nodes.getNodeAs<DeclaratorDecl>(ID);
         if (!D)
-            throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + ID));
+            throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + ID));
 
         auto begin = D->getSourceRange().getBegin();
         auto end = D->getTypeSpecEndLoc();
@@ -323,18 +322,19 @@ int main(int argc, const char **argv) {
     auto FindArrays = makeRule(
             ConstArrayFinder,
             {
-                addInclude("array", transformer::IncludeFormat::Angled),
-                changeTo(
-                        declaratorDeclStorageToEndName("arrayDecl"),
-                        cat(
-                                nodeOperation(NodeOperator::VarStorage, "arrayDecl"),
-                                "std::array<",
-                                nodeOperation(NodeOperator::ArrayType, ("array")),
-                                ", ",
-                                nodeOperation(NodeOperator::ArraySize, "array"),
-                                "> ",
-                                nodeOperation(NodeOperator::NamedDeclQualified, "arrayDecl")
-            ))},
+                    addInclude("array", transformer::IncludeFormat::Angled),
+                    changeTo(
+                            declaratorDeclStorageToEndName("arrayDecl"),
+                            cat(
+                                    nodeOperation(NodeOperator::VarStorage, "arrayDecl"),
+                                    "std::array<",
+                                    nodeOperation(NodeOperator::ArrayType, ("array")),
+                                    ", ",
+                                    nodeOperation(NodeOperator::ArraySize, "array"),
+                                    "> ",
+                                    nodeOperation(NodeOperator::DeclQualifier, "arrayDecl"),
+                                    name("arrayDecl")
+                            ))},
             cat("Array")
     );
 

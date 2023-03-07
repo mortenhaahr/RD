@@ -7,6 +7,7 @@
 #include "clang/ASTMatchers/ASTMatchersMacros.h"
 #include "clang/Tooling/Transformer/SourceCode.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
 
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
@@ -53,17 +54,25 @@ struct ArrayRefactoringTool : public ClangTool {
             return Result;
         }
 
-        return applySourceChanges();
+        LangOptions DefaultLangOptions;
+        IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+        TextDiagnosticPrinter DiagnosticPrinter(llvm::errs(), &*DiagOpts);
+        DiagnosticsEngine Diagnostics(
+            IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()),
+            &*DiagOpts, &DiagnosticPrinter, false);
+        SourceManager Sources(Diagnostics, getFiles());
+        Rewriter Rewrite(Sources, DefaultLangOptions);
+
+        return applyAllChanges(Rewrite) != false;
     }
 
+    /// @brief Apply all the saved changes to the rewriter
+    /// @param Rewrite - the rewriter to use
+    /// @return true if sucessfull
     bool applyAllChanges(Rewriter &Rewrite) {
 
         auto &sm = Rewrite.getSourceMgr();
-
-        // Find all unique files
-        std::set<std::string> Files;
-        for (const auto &Change : Changes)
-            Files.insert(Change.getFilePath());
+        auto &fm = sm.getFileManager();
 
         // FIXME: Add automatic formatting support as well.
         tooling::ApplyChangesSpec Spec;
@@ -71,48 +80,42 @@ struct ArrayRefactoringTool : public ClangTool {
         // FIXME: We should probably cleanup the result by default as well.
         Spec.Cleanup = false;
 
-        auto lt = sm.getLineTable();
-        for (const auto &File : Files) {
-            auto id = sm.getLineTableFilenameID(File);
+        // Split the changes according to filename
+        std::map<std::string, AtomicChanges> Files;
+        for (const auto &Change : Changes)
+            Files[Change.getFilePath()].push_back(Change);
 
+        //Apply all atomic changes to all files
+        for (const auto &[File, FileChanges] : Files) {
+            
+            // Get File from file manager
+            auto Entry = fm.getFileRef(File);
+            if (!Entry) {
+                llvm::errs() << Entry.takeError();
+                return false;
+            }
 
-            auto editBuffer = Rewrite.getEditBuffer(FileID(id));
+            // Get the id for the file
+            auto id = sm.getOrCreateFileID(Entry.get(), SrcMgr::C_User);
+
+            // Read the current code and apply all the changes that to that file
+            auto code = sm.getBufferData(id);
+            auto new_code = applyAtomicChanges(File, code, FileChanges, Spec);
+            
+            if (!new_code) {
+                llvm::errs() << new_code.takeError();
+                return false;
+            }
+
+            // Replace the entire file with the new code
+            auto fileRange = SourceRange(sm.getLocForStartOfFile(id), sm.getLocForEndOfFile(id));
+            Rewrite.ReplaceText(fileRange, new_code.get());
         }
 
+        // Apply all changes to disk
         return Rewrite.overwriteChangedFiles();
 
     }
-
-
-    bool applySourceChanges() {
-        
-        
-
-        for (const auto &File : Files) {
-            llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> BufferErr =
-                llvm::MemoryBuffer::getFile(File);
-            if (!BufferErr) {
-                llvm::errs() << "error: failed to open " << File << " for rewriting\n";
-                return true;
-            }
-            auto Result = tooling::applyAtomicChanges(File, (*BufferErr)->getBuffer(),
-                                                        Changes, Spec);
-            if (!Result) {
-                llvm::errs() << toString(Result.takeError());
-                return true;
-            }
-
-            std::error_code EC;
-            llvm::raw_fd_ostream OS(File, EC, llvm::sys::fs::OF_TextWithCRLF);
-            if (EC) {
-                llvm::errs() << EC.message() << "\n";
-                return true;
-            }
-            OS << *Result;
-        }
-        return false;
-    }
-
 
 private:
     AtomicChanges Changes{};

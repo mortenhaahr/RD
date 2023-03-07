@@ -115,6 +115,7 @@ struct MyConsumer {
             for (auto changes: C.get().Changes) {
                 std::cout << changes.toYAMLString() << std::endl;
             }
+            
         };
     }
 
@@ -127,7 +128,8 @@ private:
 enum class NodeOperator {
     ArraySize,
     ArrayType,
-    VarStorage
+    VarStorage,
+    NamedDeclQualified
 };
 
 /// Stencil for retrieving extra information of a node
@@ -153,7 +155,9 @@ public:
             case NodeOperator::VarStorage:
                 OpName = "varStorage";
                 break;
-
+            case NodeOperator::NamedDeclQualified:
+                OpName = "qualifiedDeclName";
+                break;
         }
         return (OpName + "(\"" + Id + "\")").str();
     }
@@ -167,8 +171,10 @@ public:
                 return getArrayElemtType(Id, Match, Result);
             case NodeOperator::VarStorage:
                 return getVarStorage(Id, Match, Result);
+            case NodeOperator::NamedDeclQualified:
+                return getQualifiedName(Id, Match, Result);
             default:
-                llvm_unreachable("Unsupported NodeOperator");
+                throw std::invalid_argument(append_file_line("Unsuported Node operator!\n"));
         }
     }
 
@@ -197,19 +203,28 @@ private:
         return Error::success();
     }
 
+    static Error getQualifiedName(StringRef Id, const MatchFinder::MatchResult &Match, 
+                                  std::string *Result) {
+        if (auto named = Match.Nodes.getNodeAs<NamedDecl>(Id)) {
+            *Result += named->getQualifiedNameAsString();
+            return Error::success();
+        }
+
+        throw std::invalid_argument(append_file_line("ID not bound or not NamedDecl: " + Id.str())); 
+
+    }
+
     /// Matches the ID of a VarDecl and appends the storage class to Result.
     /// Appends nothing if storage class is none.
     static Error getVarStorage(StringRef Id, const MatchFinder::MatchResult &Match,
                                std::string *Result) {
         
 
-
         if (auto field = Match.Nodes.getNodeAs<FieldDecl>(Id)) {
-            field->dump();
+            //Ignore
             return Error::success();
         }
         if (auto var = Match.Nodes.getNodeAs<VarDecl>(Id)) {
-            var->dump();
             auto storage_class = var->getStorageClass();
             if (storage_class == StorageClass::SC_None) return Error::success();
             auto duration = VarDecl::getStorageClassSpecifierString(storage_class);
@@ -283,7 +298,7 @@ int main(int argc, const char **argv) {
                                 ", ",
                                 nodeOperation(NodeOperator::ArraySize, "array"),
                                 "> ",
-                                name("arrayDecl")
+                                nodeOperation(NodeOperator::NamedDeclQualified, "arrayDecl")
             ))},
             cat("Array")
     );

@@ -31,4 +31,40 @@ In the official documentation from Clang transformer shown in \cref{code:080dev:
 In the public repository for this R\&D project, there is an example folder. This example folder contains multiple examples which show how to create Clang tools that write the results from a \cppinline{Transformer} onto disk.\cite{kristensenMortenhaahrRD2023} In the examples the \cppinline{RefactoringTool} helper class is used to facilitate the source-code changes. This helper class is not documented in Clang's official documentation, but it contains helper methods that make source code changes easier for the developers. 
 
 
+\section{Example of a C-style to std::array converter}
 
+This section will show an example of a tool that can find all constant-sized arrays and convert them to the C++11 \cppinline{std::array} type. This transformation is recommended in the C++ core guidelines.\cite{CoreGuidelines}
+
+When creating a tool there are multiple steps. The steps are:
+\begin{enumerate}
+    \item Matching the AST nodes
+    \item Extracting information from the nodes
+    \item Creating the replacement source code
+\end{enumerate}
+
+The \href{https://github.com/mortenhaahr/RD}{github repo for this R\&D project} contains an example project with all the source code described in this section under "examples/c\_style\_conversion\_tool".
+
+\subsection{Matching the AST}
+
+The first step in the process is to find the AST nodes of interest. In this example the declarations of arrays with a constant size. In order to specify the matcher needed it is essential to have some valid C++ code that contains the source code that needs to be changed. For this example tool, the constant array types are specified in the "examples/c\_style\_conversion\_tool/input.cpp" file on github.
+
+In order to get an idea of the type of AST nodes that are interesting to match, the AST for the entire file is "dumped" through clang by running \bashinline{clang -cc1 -ast-dump input.cpp}. This command will show all of the AST for the file. The output of the command can be seen on 
+
+\begin{figure}[H]
+    
+    \lab
+\end{figure}
+
+
+From the output it can be seen that a constant-sized array declaration consists of a DeclStmt that is a VarDecl
+
+
+\subsection{Getting information out of the nodes}
+
+\subsubsection{Stencils}
+
+\subsection{Creating the replacements}
+
+\subsubsection{Range selection}
+
+\subsection{Combining it all}

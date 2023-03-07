@@ -264,18 +264,19 @@ int main(int argc, const char **argv) {
 
     auto FindArrays = makeRule(
             ConstArrayFinder,
-            
-            changeTo(
-                    varDeclStorageToEndName("arrayDecl"),
-                    cat(
-                            nodeOperation(NodeOperator::VarStorage, "arrayDecl"),
-                            "std::array<",
-                            nodeOperation(NodeOperator::ArrayType, ("array")),
-                            ", ",
-                            nodeOperation(NodeOperator::ArraySize, "array"),
-                            "> ",
-                            name("arrayDecl")
-                    )),
+            {
+                addInclude("array", transformer::IncludeFormat::Angled),
+                changeTo(
+                        varDeclStorageToEndName("arrayDecl"),
+                        cat(
+                                nodeOperation(NodeOperator::VarStorage, "arrayDecl"),
+                                "std::array<",
+                                nodeOperation(NodeOperator::ArrayType, ("array")),
+                                ", ",
+                                nodeOperation(NodeOperator::ArraySize, "array"),
+                                "> ",
+                                name("arrayDecl")
+            ))},
             cat("Array")
     );
 

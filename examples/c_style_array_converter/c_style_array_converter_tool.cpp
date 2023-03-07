@@ -231,6 +231,16 @@ private:
     static Error getQualifiedName(StringRef Id, const MatchFinder::MatchResult &Match, 
                                   std::string *Result) {
         if (auto named = Match.Nodes.getNodeAs<NamedDecl>(Id)) {
+            std::string nested;
+            llvm::raw_string_ostream OS(nested);
+            named->printNestedNameSpecifier(OS);
+            
+            std::cout << "Location: " + named->getLocation().printToString(*Match.SourceManager) << "\n";
+            
+
+            if (named->isInLocalScopeForInstantiation()) std::cout << "Isclass\n";
+
+            std::cout << "Name: " + nested + "\n";
             *Result += named->getQualifiedNameAsString();
             return Error::success();
         }
@@ -269,7 +279,7 @@ transformer::Stencil nodeOperation(NodeOperator Op, StringRef ID) {
 
 /// Matches the ID of a VarDecl and returns the RangeSelector from storage class to end of the var name.
 /// E.g., `static const std::string str = "Hello"` returns RangeSelector with `static const std::string str`
-transformer::RangeSelector varDeclStorageToEndName(std::string ID) {
+transformer::RangeSelector declaratorDeclStorageToEndName(std::string ID) {
     return [ID](const MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
         auto *D = Result.Nodes.getNodeAs<DeclaratorDecl>(ID);
         if (!D)
@@ -315,7 +325,7 @@ int main(int argc, const char **argv) {
             {
                 addInclude("array", transformer::IncludeFormat::Angled),
                 changeTo(
-                        varDeclStorageToEndName("arrayDecl"),
+                        declaratorDeclStorageToEndName("arrayDecl"),
                         cat(
                                 nodeOperation(NodeOperator::VarStorage, "arrayDecl"),
                                 "std::array<",

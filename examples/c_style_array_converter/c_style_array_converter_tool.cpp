@@ -257,10 +257,10 @@ private:
             throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
 
         /**
-         * NOTE: Despite the similar names, `getQualifiedName*` and `getDeclQualifier*` does not have
+         * NOTE: Despite the similar names, `getQualifiedName*` and `getQualifier*` does not have
          * much to do with each other. `getQualifiedName*` refers to the fully qualified name of a node,
          * i.e., a unique identifier for the node.
-         * `getDeclQualifier*` refers to a potential qualifier in front of the declaration (as it is written in the
+         * `getQualifier*` refers to a potential qualifier in front of the declaration (as it is written in the
          * source code).
          */
         auto qualifierRange = CharSourceRange::getTokenRange(D->getQualifierLoc().getSourceRange());

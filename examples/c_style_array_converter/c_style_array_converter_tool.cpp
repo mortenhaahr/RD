@@ -6,6 +6,7 @@
 #include "clang/Tooling/Transformer/Transformer.h"
 #include "clang/ASTMatchers/ASTMatchersMacros.h"
 #include "clang/Tooling/Transformer/SourceCode.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
@@ -55,8 +56,11 @@ struct ArrayRefactoringTool : public ClangTool {
         return applySourceChanges();
     }
 
+    bool applyAllChanges(Rewriter &Rewrite) {
 
-    bool applySourceChanges() {
+        auto &sm = Rewrite.getSourceMgr();
+
+        // Find all unique files
         std::set<std::string> Files;
         for (const auto &Change : Changes)
             Files.insert(Change.getFilePath());
@@ -66,6 +70,24 @@ struct ArrayRefactoringTool : public ClangTool {
 
         // FIXME: We should probably cleanup the result by default as well.
         Spec.Cleanup = false;
+
+        auto lt = sm.getLineTable();
+        for (const auto &File : Files) {
+            auto id = sm.getLineTableFilenameID(File);
+
+
+            auto editBuffer = Rewrite.getEditBuffer(FileID(id));
+        }
+
+        return Rewrite.overwriteChangedFiles();
+
+    }
+
+
+    bool applySourceChanges() {
+        
+        
+
         for (const auto &File : Files) {
             llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> BufferErr =
                 llvm::MemoryBuffer::getFile(File);

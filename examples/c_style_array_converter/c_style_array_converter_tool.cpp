@@ -201,16 +201,24 @@ private:
     /// Appends nothing if storage class is none.
     static Error getVarStorage(StringRef Id, const MatchFinder::MatchResult &Match,
                                std::string *Result) {
-        auto var = Match.Nodes.getNodeAs<VarDecl>(Id);
-        if (!var) {
-            throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + Id.str()));
+        
+
+
+        if (auto field = Match.Nodes.getNodeAs<FieldDecl>(Id)) {
+            field->dump();
+            return Error::success();
         }
-        auto storage_class = var->getStorageClass();
-        if (storage_class == StorageClass::SC_None) return Error::success();
-        auto duration = VarDecl::getStorageClassSpecifierString(storage_class);
-        *Result += duration;
-        *Result += " ";
-        return Error::success();
+        if (auto var = Match.Nodes.getNodeAs<VarDecl>(Id)) {
+            var->dump();
+            auto storage_class = var->getStorageClass();
+            if (storage_class == StorageClass::SC_None) return Error::success();
+            auto duration = VarDecl::getStorageClassSpecifierString(storage_class);
+            *Result += duration;
+            *Result += " ";
+            return Error::success();
+        }
+
+        throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + Id.str()));
     }
 };
 
@@ -223,7 +231,7 @@ transformer::Stencil nodeOperation(NodeOperator Op, StringRef ID) {
 /// E.g., `static const std::string str = "Hello"` returns RangeSelector with `static const std::string str`
 transformer::RangeSelector varDeclStorageToEndName(std::string ID) {
     return [ID](const MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
-        auto *D = Result.Nodes.getNodeAs<VarDecl>(ID);
+        auto *D = Result.Nodes.getNodeAs<DeclaratorDecl>(ID);
         if (!D)
             throw std::invalid_argument(append_file_line("ID not bound or not ArrayType: " + ID));
 
@@ -257,7 +265,7 @@ int main(int argc, const char **argv) {
             OptionsParser.getSourcePathList());
 
 
-    auto ConstArrayFinder = varDecl(
+    auto ConstArrayFinder = declaratorDecl(
             myMatcher::isNotInStdNamespace(),
             hasType(constantArrayType().bind("array"))
     ).bind("arrayDecl");

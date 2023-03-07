@@ -35,6 +35,18 @@ static int* const non_movable_pointer_array_static[1] = {normal_array_static};
 static const int* const non_modifyable_non_movable_pointer_array_static[2] = {normal_array_static, normal_const_array_static};
 */
 
+class Test {
+
+public:
+    int ClassArray[5] = {};
+
+private:
+    int ClassPrivateArray[4] = {};
+    static int StaticClassArray[3];
+};
+
+int Test::StaticClassArray[3] = {1, 2, 3};
+
 int main(int argc, const char* argv[]) {
 
     //std::array<int, 5>

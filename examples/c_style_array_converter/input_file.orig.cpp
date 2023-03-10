@@ -25,6 +25,28 @@ class Test {
 public:
     int ClassArray[5] = {};
 
+    /*
+        This is actually just an int*, so we cannot convert it and keep the semantics even if the syntax looks like it should be able to.
+        https://stackoverflow.com/questions/16144535/difference-between-passing-array-fixed-sized-array-and-base-address-of-array-as
+        We could potentially go in and reinterpret the line as a varDecl and switch it to a save fixed sized array - but this is just a thought.
+        We issue a warning about the fixed sized parameter.
+    */
+    void testMethodConstSizedParam(int param[5]);
+
+    /*
+        This is an int *[4], so this could be converted to a *std::array<int, 4>.
+    */
+    void testMethodArrayOfArrays(int param[6][4]);
+
+    void testSpacesInParameter(int param [5]);
+    void testSpacesInParameter2D(int param [5][4]);
+    void testSpacesInParameter2D2(int param [5] [4]);
+
+    /*
+        This should not give a warning as it is not a fixed size array.
+    */
+    void testMethodNonConstParam(int param[]);
+
 private:
     int ClassPrivateArray[4] = {};
     static int StaticClassArray[3];

@@ -5,6 +5,8 @@
 #include "Printer.h"
 #include <iostream>
 
+static int global[5] = {};
+
 Printer::Printer() {
     for (int i = 0; i < sizeof(data_)/sizeof(data_[0]); ++i) {
         data_[i] = i;

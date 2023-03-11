@@ -15,7 +15,6 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-#include <regex>
 
 
 using namespace clang;
@@ -281,44 +280,6 @@ public:
         });
     }
 
-    /// @brief This method will throw a warning about the usage of a constant sized CStyle array as a mehtod parameter. 
-    /// @tparam N The amount of chars in the format specifier. This should be autodeduced, so ignore it.
-    /// @param Id The Id of the bound ParmVarDecl
-    /// @param format The format of the warning to be printed. See DiagnosticEngine::getCustomDiagID for details.
-    /// @return 
-    template<unsigned N>
-    static auto warnAboutCStyleArrayParameter(StringRef Id, const char (&format)[N]) {
-        return nodeOperation("warnAboutCStyleArrayParameters", [Id, &format](const MatchFinder::MatchResult &Match, std::string *Result) {
-            if (auto method = Match.Nodes.getNodeAs<ParmVarDecl>(Id)) {
-                std::cout << "Dumping: " << method->getNameAsString() << std::endl;
-                method->dump();
-
-                auto charRange = Match.SourceManager->getExpansionRange(method->getSourceRange());
-                auto text = getText(charRange, *Match.Context);
-                
-                return Error::success();
-            }
-
-            throw std::invalid_argument(append_file_line("ID not bound or not ParmVarDel: " + Id.str()));
-        });
-    }
-
-/*
-    /// @brief issue a warning theough the Diagnostic engine wit the specified message from the format.
-    /// @tparam F Functor to get the SourceLocation to issue the warning. Will be called with argument: const MatchFinder::MatchResult &
-    /// @tparam N The amount of chars in the format string. This will be auto deduced.
-    /// @param format The format to issue in the warning. See DiagnosticEngine::getCustomDiagID for details. 
-    /// @param getLocation A functor that returns the SourceLocation to issue the warning at. Will be called with argument: const MatchFinder::MatchResult &
-    /// @return 
-    template<unsigned N, typename F>
-    static auto issueWarning(const char (&format)[N], F &&getLocation) {
-        return nodeOperation("issueWarning", [&](const MatchFinder::MatchResult &Match, std::string *Result) {
-            auto &DE = Match.SourceManager->getDiagnostics(); 
-            auto ID = DE.getCustomDiagID(DiagnosticsEngine::Warning, format);
-            DiagnosticBuilder Report = DE.Report(getLocation(Match), ID);
-        });
-    }
-*/
 };
 
 /// Matches the ID of a DeclaratorDecl and returns the RangeSelector from storage class to end of the var name.
@@ -372,8 +333,6 @@ int main(int argc, const char **argv) {
             isExpansionInMainFile(),
             hasType(constantArrayType().bind("array"))
     ).bind("arrayDecl");
-
-    //auto MethodFinder = parmVarDecl(myMatcher::isNotInStdNamespace()).bind("method");
 
     auto FindArrays = makeRule(
             ConstArrayFinder,

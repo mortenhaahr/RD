@@ -42,3 +42,5 @@ target_link_libraries(converter
         clangTooling
         clangTransformer
     )
+
+add_subdirectory(example_project)

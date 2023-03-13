@@ -15,7 +15,6 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-#include <regex>
 
 
 using namespace clang;
@@ -281,56 +280,6 @@ public:
             throw std::invalid_argument(append_file_line("ID not bound or not Decl: " + Id.str()));
         });
     }
-
-    /// @brief This method will throw a warning about the usage of a constant sized CStyle array as a mehtod parameter. 
-    /// @tparam N The amount of chars in the format specifier. This should be autodeduced, so ignore it.
-    /// @param Id The Id of the bound ParmVarDecl
-    /// @param format The format of the warning to be printed. See DiagnosticEngine::getCustomDiagID for details.
-    /// @return 
-    template<unsigned N>
-    static auto warnAboutCStyleArrayParameter(StringRef Id, const char (&format)[N]) {
-        return nodeOperation("warnAboutCStyleArrayParameters", [Id, &format](const MatchFinder::MatchResult &Match, std::string *Result) {
-
-            if (auto method = Match.Nodes.getNodeAs<ParmVarDecl>(Id)) {
-                auto charRange = Match.SourceManager->getExpansionRange(method->getSourceRange());
-                auto text = getText(charRange, *Match.Context);
-
-                //Check the source text for "identifyer + any amount of whitespaces ' ' + '[' + at least one number + ']'"
-                std::regex CStyleParameterMatcher("\\w+\\s*\\[(\\d+)\\]");
-                auto found = std::regex_search(text.str(), CStyleParameterMatcher);
-                if (found) {
-                    // Get diagnostic builder and place the ^ at the parameter name
-                    auto &DE = Match.SourceManager->getDiagnostics(); 
-                    auto ID = DE.getCustomDiagID(DiagnosticsEngine::Warning, format);
-                    DiagnosticBuilder DB = DE.Report(method->getLocation(), ID);
-
-                    // Add the ~ squiggles under the parameter in the output window.
-                    DB.AddSourceRange(charRange);
-                }
-                
-                return Error::success();
-            }
-
-            throw std::invalid_argument(append_file_line("ID not bound or not ParmVarDel: " + Id.str()));
-        });
-    }
-
-/*
-    /// @brief issue a warning theough the Diagnostic engine wit the specified message from the format.
-    /// @tparam F Functor to get the SourceLocation to issue the warning. Will be called with argument: const MatchFinder::MatchResult &
-    /// @tparam N The amount of chars in the format string. This will be auto deduced.
-    /// @param format The format to issue in the warning. See DiagnosticEngine::getCustomDiagID for details. 
-    /// @param getLocation A functor that returns the SourceLocation to issue the warning at. Will be called with argument: const MatchFinder::MatchResult &
-    /// @return 
-    template<unsigned N, typename F>
-    static auto issueWarning(const char (&format)[N], F &&getLocation) {
-        return nodeOperation("issueWarning", [&](const MatchFinder::MatchResult &Match, std::string *Result) {
-            auto &DE = Match.SourceManager->getDiagnostics(); 
-            auto ID = DE.getCustomDiagID(DiagnosticsEngine::Warning, format);
-            DiagnosticBuilder Report = DE.Report(getLocation(Match), ID);
-        });
-    }
-*/
 };
 
 /// Matches the ID of a DeclaratorDecl and returns the RangeSelector from storage class to end of the var name.
@@ -349,9 +298,13 @@ transformer::RangeSelector declaratorDeclStorageToEndName(std::string ID) {
 }
 
 namespace myMatcher {
-    /// Matches all that is not in the `std` namespace
-    /// Inverse of a native Clang matcher: see line 7810 in ASTMatchers.h (isInStdNamespace)
-    AST_MATCHER(Decl, isNotInStdNamespace) { return !Node.isInStdNamespace(); }
+    /// Matches on expression with the provided originalType.
+    /// (E.g. arrays that have been adjusted to pointers)
+    /// Found in clang-tools-extra/clang-tidy/cppcoreguidelines/ProTypeVarargCheck.cpp
+    AST_MATCHER_P(AdjustedType, hasOriginalType,
+                  ast_matchers::internal::Matcher<QualType>, InnerType) {
+        return InnerType.matches(Node.getOriginalType(), Finder, Builder);
+    }
 }
 
 
@@ -376,8 +329,6 @@ int main(int argc, const char **argv) {
             isExpansionInMainFile(),
             hasType(constantArrayType().bind("array"))
     ).bind("arrayDecl");
-
-    //auto MethodFinder = parmVarDecl(myMatcher::isNotInStdNamespace()).bind("method");
 
     auto FindArrays = makeRule(
             ConstArrayFinder,
@@ -406,21 +357,34 @@ int main(int argc, const char **argv) {
             Consumer.RefactorConsumer()
     };
     Transf.registerMatchers(&Finder);
-
-    auto MethodParams = parmVarDecl(isExpansionInMainFile()).bind("method");
+    auto ParmConstArrays = parmVarDecl( hasType(
+            decayedType(myMatcher::hasOriginalType(constantArrayType().bind("parm")))), isExpansionInMainFile()).bind("parmDecl");
 
     auto FindCStyleArrayParams = makeRule(
-        MethodParams,
-        note(
-            node("method"),
-            cat(NodeOperation::warnAboutCStyleArrayParameter("method", "CStyleArray used as method parameter. This is actually just an unbounded pointer.")))
+            ParmConstArrays,
+            {
+                    addInclude("array", transformer::IncludeFormat::Angled),
+                    changeTo(
+                            declaratorDeclStorageToEndName("parmDecl"),
+                            cat(
+                                    NodeOperation::getVarStorage("parmDecl"),
+                                    "std::array<",
+                                    // TODO: Make remove_const unnecessary. We need to make a decision on how to treat const
+                                    "std::remove_const_t<",
+                                    NodeOperation::getArrayElemtType("parm"),
+                                    ">",
+                                    ", ",
+                                    NodeOperation::getConstArraySize("parm"),
+                                    "> ",
+                                    NodeOperation::getDeclQualifier("parmDecl"),
+                                    name("parmDecl")
+                            ))},
+            cat("Changed CStyle Array: ", NodeOperation::getLocOfDecl("parmDecl"))
     );
-
-    auto consumer = [](Expected<TransformerResult<void>> C) {};
 
     Transformer WarnCStyleMethod {
         FindCStyleArrayParams,
-        consumer
+        Consumer.RefactorConsumer()
     };
 
     WarnCStyleMethod.registerMatchers(&Finder);

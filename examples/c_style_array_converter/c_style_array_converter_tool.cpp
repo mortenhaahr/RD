@@ -61,7 +61,7 @@ struct ArrayRefactoringTool : public ClangTool {
         DiagnosticsEngine Diagnostics(
                 IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()),
                 &*DiagOpts, &DiagnosticPrinter, false);
-        
+
         SourceManager Sources(Diagnostics, getFiles());
         Rewriter Rewrite(Sources, DefaultLangOptions);
 
@@ -166,7 +166,8 @@ namespace NodeOps {
         return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
             auto array = Match.Nodes.getNodeAs<ConstantArrayType>(Id);
             if (!array) {
-                throw std::invalid_argument(append_file_line("ID not bound or not ConstantArrayType: " + Id.str() + "\n"));
+                throw std::invalid_argument(
+                        append_file_line("ID not bound or not ConstantArrayType: " + Id.str() + "\n"));
             }
             auto size = array->getSize().getZExtValue();
             std::stringstream ss;
@@ -231,7 +232,7 @@ namespace NodeOps {
     /// @param Id The Id string of a bound Decl. This method will throw runtime if the node is unbound or not a Decl type node.
     /// @return 
     resType getLocOfDecl(StringRef Id) {
-        return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string>{
+        return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
             if (auto decl = Match.Nodes.getNodeAs<Decl>(Id)) {
                 return decl->getLocation().printToString(*Match.SourceManager);
             }
@@ -294,19 +295,19 @@ int main(int argc, const char **argv) {
     auto FindArrays = makeRule(
             ConstArrayFinder,
             {
-                addInclude("array", transformer::IncludeFormat::Angled),
-                changeTo(
-                    declaratorDeclStorageToEndName("arrayDecl"),
-                    cat(
-                        transformer::run(NodeOps::getVarStorage("arrayDecl")),
-                        "std::array<",
-                        transformer::run(NodeOps::getArrayElemtType("array")),
-                        ", ",
-                        transformer::run(NodeOps::getConstArraySize("array")),
-                        "> ",
-                        transformer::run(NodeOps::getDeclQualifier("arrayDecl")),
-                        name("arrayDecl")         
-            ))},
+                    addInclude("array", transformer::IncludeFormat::Angled),
+                    changeTo(
+                            declaratorDeclStorageToEndName("arrayDecl"),
+                            cat(
+                                    transformer::run(NodeOps::getVarStorage("arrayDecl")),
+                                    "std::array<",
+                                    transformer::run(NodeOps::getArrayElemtType("array")),
+                                    ", ",
+                                    transformer::run(NodeOps::getConstArraySize("array")),
+                                    "> ",
+                                    transformer::run(NodeOps::getDeclQualifier("arrayDecl")),
+                                    name("arrayDecl")
+                            ))},
             cat("Changed CStyle Array: ", transformer::run(NodeOps::getLocOfDecl("arrayDecl")))
     );
 
@@ -318,8 +319,9 @@ int main(int argc, const char **argv) {
             Consumer.RefactorConsumer()
     };
     Transf.registerMatchers(&Finder);
-    auto ParmConstArrays = parmVarDecl( hasType(
-            decayedType(myMatcher::hasOriginalType(constantArrayType().bind("parm")))), isExpansionInMainFile()).bind("parmDecl");
+    auto ParmConstArrays = parmVarDecl(hasType(
+            decayedType(myMatcher::hasOriginalType(constantArrayType().bind("parm")))), isExpansionInMainFile()).bind(
+            "parmDecl");
 
     auto FindCStyleArrayParams = makeRule(
             ParmConstArrays,
@@ -340,9 +342,9 @@ int main(int argc, const char **argv) {
             cat("Changed CStyle Array: ", transformer::run(NodeOps::getLocOfDecl("parmDecl")))
     );
 
-    Transformer WarnCStyleMethod {
-        FindCStyleArrayParams,
-        Consumer.RefactorConsumer()
+    Transformer WarnCStyleMethod{
+            FindCStyleArrayParams,
+            Consumer.RefactorConsumer()
     };
 
     WarnCStyleMethod.registerMatchers(&Finder);

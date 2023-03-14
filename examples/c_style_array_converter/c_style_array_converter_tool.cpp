@@ -243,22 +243,6 @@ namespace NodeOps {
 
 } //end namespace NodeOps
 
-
-/// Matches the ID of a DeclaratorDecl and returns the RangeSelector from storage class to end of the var name.
-/// E.g., `static const std::string str = "Hello"` returns RangeSelector with `static const std::string str`
-transformer::RangeSelector declaratorDeclStorageToEndName(std::string ID) {
-    return [ID](const MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
-        auto *D = Result.Nodes.getNodeAs<DeclaratorDecl>(ID);
-        if (!D)
-            throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + ID));
-
-        auto begin = D->getSourceRange().getBegin();
-        auto end = D->getTypeSpecEndLoc();
-        auto R = CharSourceRange::getTokenRange(begin, end);
-        return R;
-    };
-}
-
 namespace myMatcher {
     /// Matches on expression with the provided originalType.
     /// (E.g. arrays that have been adjusted to pointers)
@@ -289,7 +273,8 @@ int main(int argc, const char **argv) {
 
     auto ConstArrayFinder = declaratorDecl(
             isExpansionInMainFile(),
-            hasType(constantArrayType().bind("array"))
+            hasType(constantArrayType().bind("array")),
+            hasTypeLoc(typeLoc().bind("arrayLoc"))
     ).bind("arrayDecl");
 
     auto FindArrays = makeRule(
@@ -297,7 +282,7 @@ int main(int argc, const char **argv) {
             {
                     addInclude("array", transformer::IncludeFormat::Angled),
                     changeTo(
-                            declaratorDeclStorageToEndName("arrayDecl"),
+                            transformer::encloseNodes("arrayDecl", "arrayLoc"),
                             cat(
                                     transformer::run(NodeOps::getVarStorage("arrayDecl")),
                                     "std::array<",
@@ -319,16 +304,19 @@ int main(int argc, const char **argv) {
             Consumer.RefactorConsumer()
     };
     Transf.registerMatchers(&Finder);
-    auto ParmConstArrays = parmVarDecl(hasType(
-            decayedType(myMatcher::hasOriginalType(constantArrayType().bind("parm")))), isExpansionInMainFile()).bind(
-            "parmDecl");
+    auto ParmConstArrays = parmVarDecl(
+        isExpansionInMainFile(),
+        hasType(
+            decayedType(myMatcher::hasOriginalType(constantArrayType().bind("parm")))),
+        hasTypeLoc(typeLoc().bind("parmLoc")) 
+    ).bind("parmDecl");
 
     auto FindCStyleArrayParams = makeRule(
             ParmConstArrays,
             {
                     addInclude("array", transformer::IncludeFormat::Angled),
                     changeTo(
-                            declaratorDeclStorageToEndName("parmDecl"),
+                            transformer::encloseNodes("parmDecl", "parmLoc"),
                             cat(
                                     transformer::run(NodeOps::getVarStorage("parmDecl")),
                                     "std::array<",

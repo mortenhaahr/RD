@@ -7,26 +7,29 @@ The following section is dedicated to describing the important decisions made re
 \subsection{General build settings}
 
 Initially, some general settings for the project are configured which can be seen in \cref{code:080dev:cmake_base_settings}.
-Line \ref{line:080dev:compiler} forces Clang as the compiler which is highly recommended as LibTooling was compiled with Clang. Choosing another compiler may result in parts of the project being compiled with another standard library implementation, e.g., libstd++ that is the default for GCC. This may cause incompatibility between the application binary interfaces (ABIs) which is considered undefined behaviour, essentially leaving the entire program behaviour unspecified \cite{cppreferenceUndefinedBehaviorCppreference}. This concept is also known as ABI breakage.
-Line \ref{line:080dev:compile_commands} makes CMake generate the file ``compile\_commands.json'' during configuration and contains information related to which compilation command should be invoked on which source file. 
+Line 1 forces Clang as the compiler which is highly recommended as LibTooling was compiled with Clang. Choosing another compiler may result in parts of the project being compiled with another standard library implementation, e.g., libstd++ that is the default for GCC. This may cause incompatibility between the application binary interfaces (ABIs) which is considered undefined behaviour, essentially leaving the entire program behaviour unspecified \cite{cppreferenceUndefinedBehaviorCppreference}. This concept is also known as ABI breakage.
+Line 2 makes CMake generate the file ``compile\_commands.json'' during configuration and contains information related to which compilation command should be invoked on which source file. 
 The file is used by LibTooling as it is needed in order to generate the AST across several compilation units in order to determine their relations \cite{JSONCompilationDatabase}. It should be enabled in all the CMake projects that should allow for Clang AST analysis.
-Line \ref{line:080dev:standard_v} defines the C++ standard version, which is set to C++17 since LibTooling was compiled with this.
-Line \ref{line:080dev:output_dir} defines the output directory of the executable to be in \textinline{<build_folder>/bin} which has importance concerning how LibTooling searches for include directories at run-time as described in \cref{subsec:080dev:rt_include}.
-Finally, line \ref{line:080dev:rtti} disables Run-Time Type Information (RTTI). RTTI allows the program to identify the type of an object at runtime, among others, by enabling the usage of the functions \cppinline{dynamic_cast} and \cppinline{typeid}. Since LLVM leaves it to the user whether RTTI should be used or not, it will attempt to use an implementation with RTTI if it is not explicitly disabled resulting in a nasty linker error when the implementation has not been compiled.
+Line 3 defines the C++ standard version, which is set to C++17 since LibTooling was compiled with this.
+Line 4 defines the output directory of the executable to be in \textinline{<build_folder>/bin} which has importance concerning how LibTooling searches for include directories at run-time as described in \cref{subsec:080dev:rt_include}.
+Finally, line 5 disables Run-Time Type Information (RTTI). RTTI allows the program to identify the type of an object at runtime, among others, by enabling the usage of the functions \cppinline{dynamic_cast} and \cppinline{typeid}. Since LLVM leaves it to the user whether RTTI should be used or not, it will attempt to use an implementation with RTTI if it is not explicitly disabled resulting in a nasty linker error when the implementation has not been compiled.
 
 \begin{listing}[H]
     \begin{cmakecode}
-set(CMAKE_CXX_COMPILER clang++)@\label{line:080dev:compiler}@
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)@\label{line:080dev:compile_commands}@
-set(CMAKE_CXX_STANDARD 17)@\label{line:080dev:standard_v}@
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")@\label{line:080dev:output_dir}@
-add_compile_options(-fno-rtti)@\label{line:080dev:rtti}@
+set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+add_compile_options(-fno-rtti)
     \end{cmakecode}
     \caption{General settings for the CMake build environment.}
     \label{code:080dev:cmake_base_settings}
 \end{listing}
 
 \subsection{Linking against libraries}
+
+%TODO: Write this subsec
+
 \begin{listing}[H]
     \begin{cmakecode}
 find_package(LLVM REQUIRED CONFIG)
@@ -56,7 +59,21 @@ target_link_libraries(transformer
 
 
 \subsection{Run-time include directories}\label{subsec:080dev:rt_include}
+When executing binaries created with LibTooling, a big part of the process consists of analyzing the source-code that is to be analyzed, which is done following the pipeline as shown in \cref{fig:030bac:llvmToolchainOverview}.
+Most projects written in C++ takes use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, these definitions would also have to be specified to the tool in order to be analyzed, however, it would be tedious for the user to specify manually on every tool invocation.
+For practical reasons, LibTooling provides a mechanism of automatically discovering header files in 
 
+%TODO: Finish writing this
+
+% but naturally these would also have to be provided to the tool in order to analyze a project.
+
+% , the user would have to provide these source-files as arguments to the tool.
+
+% having to specify all the headers of the standard library through the command line would be very impractical. 
+
+% In many scenarios these will be using some headers that are part of the C++ standard library.
+
+% LibTooling is extensible in the regard that it works for several architectures and with several C++ standard library implementations. 
 
 % Describe default search path is parents from build
 % NOTE: ./transformer ../../input_file.cpp -- -I"/usr/local/lib/clang/17/include/" works for finding stdlib but is specific to the user

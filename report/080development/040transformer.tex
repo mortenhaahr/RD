@@ -50,11 +50,6 @@ The first step in the process is to find the AST nodes of interest. In this exam
 
 In order to get an idea of the type of AST nodes that are interesting to match, the AST for the entire file is "dumped" through clang by running \bashinline{clang -cc1 -ast-dump input.cpp}. This command will show all of the AST for the file. The output of the command can be seen on 
 
-\begin{figure}[H]
-    
-    \lab
-\end{figure}
-
 
 From the output it can be seen that a constant-sized array declaration consists of a DeclStmt that is a VarDecl
 

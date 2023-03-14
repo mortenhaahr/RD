@@ -1,5 +1,5 @@
 % Usually not needed (loaded by default, but overleaf adds it in the default project so i did not remove it)
-\usepackage[utf8]{inputenc}
+% \usepackage[utf8]{inputenc}
 
 
 %---------- Minted (Formatted code) ----------%
@@ -30,16 +30,6 @@ sorting=none
 
 % Package for basic colors
 \usepackage[dvipsnames]{xcolor}
-
-% Allows for drawing things in document sideways:
-\usepackage{pdflscape}
-\usepackage{rotating}
-
-% Creation of Gantt Diagrams 
-\usepackage{pgfgantt}
-
-% Add todo notes
-\usepackage[prependcaption,textsize=tiny,disable]{todonotes}
 
 %----------  Page and style setup   ----------%
 % Removed tab at beginning of all paragraphs and added spacing instead.
@@ -135,12 +125,6 @@ sorting=none
 \gdef\theFancyVerbLine{\tiny\rmfamily\arabic{FancyVerbLine}}%
 }
 
-% Degree symbol shortcut
-\def\deg{^{\circ}}
-
-% Enables use of Euro symbol
-\usepackage[official]{eurosym}
-
 %----------         Tabels          ----------%
 %Multi page tables
 \usepackage{longtable}
@@ -176,30 +160,6 @@ sorting=none
 \crefname{lstlisting}{listing}{listings}
 \creflabelformat{equation}{#2#1#3}          % Ligningsnumre uden parentes omkring
 
-%----------      Word counting      ----------%
-%TC:group table 0 0
-%TC:group tabular 0 0
-
-% Creates the word count commands
-\newread\tmp
-\newcommand{\quickcharcount}[1]{%
-  \immediate\write18{texcount -1 -sum -merge -char #1.tex > #1-chars.sum}%
-  \openin\tmp=#1-chars.sum%
-  \read\tmp to \thechar%
-  \closein\tmp%
-}
-\newcommand{\quickwordcount}[1]{%
-  \immediate\write18{texcount -1 -sum -merge #1.tex > #1-words.sum}%
-  \openin\tmp=#1-words.sum%
-  \read\tmp to \theword%
-  \closein\tmp%
-}
-\newcommand{\detailtexcount}[1]{%
-  \immediate\write18{texcount -merge -sum -q #1.tex output.bbl > #1.wcdetail }%
-  \verbatiminput{#1.wcdetail}%
-}
-
-
 %----------    Header and footer    ----------%
 % Includes fance heder style
 \usepackage{fancyhdr}
@@ -226,19 +186,6 @@ sorting=none
 %Added to avoid biblatex warnings
 \usepackage{csquotes}
 
-
-%Appendix
-\newcounter{appendix}
-\crefname{appendix}{appendiks}{appendiks}
-\Crefname{appendix}{Appendiks}{Appendiks}
-\renewcommand\appendix[1]{%
-    \refstepcounter{appendix}%
-    \section*{\textbf{Appendiks \arabic{appendix}:} #1}%
-    \addcontentsline{toc}{section}{Appendiks \arabic{appendix}: #1}%
-}
-% \crefname{listing}{code}{codes}  
-% \Crefname{listing}{Code}{Codes}
-
 \newminted{csharp}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
 \newminted{c}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
 \newminted{python}{frame=single, breaklines=true, linenos=true, escapeinside=@@}
@@ -256,33 +203,3 @@ sorting=none
 \newmintinline{bash}{bgcolor=codebg, breaklines=true}
 \newmintinline{cpp}{bgcolor=codebg, breaklines=true}
 \newmintinline{cmake}{bgcolor=codebg, breaklines=true}
-
-
-%----------    Commands for requirements    ----------%
-\newcounter{reqitemscounter}
-\newcommand\definereqitems[1]{\parsereqitems #1 \relax<THEEND>}
-\def\parsereqitems#1 #2<THEEND>{%
-  \stepcounter{reqitemscounter}%
-  \expandafter\xdef\csname reqitemcounter#1\endcsname{\thereqitemscounter}%
-  \ifx\relax#2\relax\else\parsereqitems #2<THEEND>\fi%
-}
-\newcommand\reqitem[1]{\item[\textbf{R\csname reqitemcounter#1\endcsname:}]}
-
-\newcounter{subitemscounter}
-\newcommand\definesubreqitems[1]{\parsesubreqitems #1 \relax<THEEND>}
-\def\parsesubreqitems#1 #2<THEEND>{%
-  \stepcounter{subitemscounter}%
-  \expandafter\xdef\csname subreqitemcounter#1\endcsname{\thesubitemscounter}%
-  \ifx\relax#2\relax\else\parsesubreqitems #2<THEEND>\fi%
-}
-\newcommand\subreqitem[2]{
-    \item[\textbf{R\csname reqitemcounter#1\endcsname.\csname subreqitemcounter#2\endcsname:}]
-}
-% Req identifiers
-\definereqitems{R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20 R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34}
-
-% Subreq identifiers
-\definesubreqitems{RX1 RX2 RX3 RX4 RX5 RX6 RX7 RX8 RX9 RX10}
-
-%----------    VDM code    ----------%
-\usepackage[notimes]{vdmlisting} % NOTE: For some reason it changes the font of the entire document...

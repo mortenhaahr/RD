@@ -158,47 +158,12 @@ private:
 
 /// Stencil for retrieving extra information of a node
 class NodeOperation {
-private:
-
-/// @brief  Factory for creating stencils
-/// @tparam T Allows lambda expressions to be used
-/// @param name Name of the operation
-/// @param lambda The actual implementation of the functionality. Will be called with two parameters: const MatchFinder::MatchResult &Match, std::string *Result
-/// @return A stencil that can be used to generate edits or issue warnings
-template<typename T>
-static transformer::Stencil nodeOperation(
-    const std::string& name,
-    const T &&lambda) {
-
-    //Internal stencil struct that must be made shared for the stencil API
-    struct NodeOp : public transformer::StencilInterface {
-        explicit NodeOp(
-            const std::string& name, 
-            const T & lambda) : 
-            Name(name), 
-            Lambda(lambda) {}
-            //[&lambda](const MatchFinder::MatchResult &Match, std::string *Result){return lambda(Match, Result);}
-        
-        // Name of the Stencil.
-        std::string toString() const override {return Name;}
-
-        //Evaluation method. This will be called by the stencil API.
-        Error eval(const MatchFinder::MatchResult &Match, std::string *Result) const override {
-            return Lambda(Match, Result);
-        }
-
-    private:
-        const std::string& Name;
-        const std::function<Error(const MatchFinder::MatchResult &, std::string *)> Lambda;
-    };
-
-    return std::make_shared<NodeOp>(name, lambda);
-}
-
 public:
+
+    using resType = transformer::MatchConsumer<std::string>;
     /// Matches the ID with a ConstantArrayType and appends the size of the array to Result
-    static transformer::Stencil getConstArraySize(StringRef Id) {
-        return nodeOperation("getConstArraySize", [=](const MatchFinder::MatchResult &Match, std::string *Result) {
+    static resType getConstArraySize(StringRef Id) {
+        return [=](const MatchFinder::MatchResult &Match) -> llvm::Expected<std::string> {
             auto array = Match.Nodes.getNodeAs<ConstantArrayType>(Id);
             if (!array) {
                 throw std::invalid_argument(append_file_line("ID not bound or not ConstantArrayType: " + Id.str() + "\n"));
@@ -206,48 +171,44 @@ public:
             auto size = array->getSize().getZExtValue();
             std::stringstream ss;
             ss << size;
-            *Result += ss.str();
-            return Error::success();
-        });
+            return ss.str();
+        };
     }
 
     /// Matches the ID with an ArrayType and appends the type of the array to Result
-    static transformer::Stencil getArrayElemtType(StringRef Id) {
-        return nodeOperation("getArrayElementType", [=](const MatchFinder::MatchResult &Match, std::string *Result) {
+    static resType getArrayElemtType(StringRef Id) {
+        return [=](const MatchFinder::MatchResult &Match) -> llvm::Expected<std::string> {
             auto array = Match.Nodes.getNodeAs<ArrayType>(Id);
             if (!array) {
                 throw std::runtime_error(append_file_line("ID not bound or not ArrayType: " + Id.str()));
             }
-            *Result += array->getElementType().getAsString();
-            return Error::success();
-        });
+            return array->getElementType().getAsString();
+        };
     }
 
     /// Matches the ID of a VarDecl and appends the storage class to Result.
     /// Appends nothing if storage class is none.
-    static transformer::Stencil getVarStorage(StringRef Id) {
-        return nodeOperation("getVarStorage", [=](const MatchFinder::MatchResult &Match, std::string *Result) {
+    static resType getVarStorage(StringRef Id) {
+        return [=](const MatchFinder::MatchResult &Match) -> llvm::Expected<std::string> {
             if (auto field = Match.Nodes.getNodeAs<FieldDecl>(Id)) {
                 //Ignore
-                return Error::success();
+                return "";
             }
             if (auto var = Match.Nodes.getNodeAs<VarDecl>(Id)) {
                 auto storage_class = var->getStorageClass();
-                if (storage_class == StorageClass::SC_None) return Error::success();
+                if (storage_class == StorageClass::SC_None) return "";
                 auto duration = VarDecl::getStorageClassSpecifierString(storage_class);
-                *Result += duration;
-                *Result += " ";
-                return Error::success();
+                return std::string(duration) + " ";
             }
 
             throw std::invalid_argument(append_file_line("ID not bound or not FieldDecl or VarDecl: " + Id.str()));
-        });
+        };
     }
 
     /// Matches the ID of a DeclaratorDecl and appends the qualifier in front of the name to the Result.
     /// (In most cases there are no qualifiers)
-    static transformer::Stencil getDeclQualifier(StringRef Id) {
-        return nodeOperation("getDeclQualifier", [=](const MatchFinder::MatchResult &Match, std::string *Result) {
+    static resType getDeclQualifier(StringRef Id) {
+        return [=](const MatchFinder::MatchResult &Match) -> llvm::Expected<std::string> {
             auto *D = Match.Nodes.getNodeAs<DeclaratorDecl>(Id);
             if (!D)
                 throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
@@ -262,23 +223,21 @@ public:
             auto qualifierRange = CharSourceRange::getTokenRange(D->getQualifierLoc().getSourceRange());
             auto qualifierText = getText(qualifierRange, *Match.Context).str();
 
-            *Result += qualifierText;
-            return Error::success();
-        });
+            return qualifierText;
+        };
     }
 
     /// @brief Adds a string reprecentation of the location of the specified Decl to the edit string.
     /// @param Id The Id string of a bound Decl. This method will throw runtime if the node is unbound or not a Decl type node.
     /// @return 
-    static transformer::Stencil getLocOfDecl(StringRef Id) {
-        return nodeOperation("getLocOfDecl", [=](const MatchFinder::MatchResult &Match, std::string *Result) {
+    static resType getLocOfDecl(StringRef Id) {
+        return [=](const MatchFinder::MatchResult &Match) -> llvm::Expected<std::string>{
             if (auto decl = Match.Nodes.getNodeAs<Decl>(Id)) {
-                *Result += decl->getLocation().printToString(*Match.SourceManager);
-                return Error::success();
+                return decl->getLocation().printToString(*Match.SourceManager);
             }
 
             throw std::invalid_argument(append_file_line("ID not bound or not Decl: " + Id.str()));
-        });
+        };
     }
 };
 
@@ -337,16 +296,16 @@ int main(int argc, const char **argv) {
                 changeTo(
                     declaratorDeclStorageToEndName("arrayDecl"),
                     cat(
-                        NodeOperation::getVarStorage("arrayDecl"),
+                        transformer::run(NodeOperation::getVarStorage("arrayDecl")),
                         "std::array<",
-                        NodeOperation::getArrayElemtType("array"),
+                        transformer::run(NodeOperation::getArrayElemtType("array")),
                         ", ",
-                        NodeOperation::getConstArraySize("array"),
+                        transformer::run(NodeOperation::getConstArraySize("array")),
                         "> ",
-                        NodeOperation::getDeclQualifier("arrayDecl"),
+                        transformer::run(NodeOperation::getDeclQualifier("arrayDecl")),
                         name("arrayDecl")         
             ))},
-            cat("Changed CStyle Array: ", NodeOperation::getLocOfDecl("arrayDecl"))
+            cat("Changed CStyle Array: ", transformer::run(NodeOperation::getLocOfDecl("arrayDecl")))
     );
 
     MatchFinder Finder;
@@ -367,19 +326,19 @@ int main(int argc, const char **argv) {
                     changeTo(
                             declaratorDeclStorageToEndName("parmDecl"),
                             cat(
-                                    NodeOperation::getVarStorage("parmDecl"),
+                                    transformer::run(NodeOperation::getVarStorage("parmDecl")),
                                     "std::array<",
                                     // TODO: Make remove_const unnecessary. We need to make a decision on how to treat const
                                     "std::remove_const_t<",
-                                    NodeOperation::getArrayElemtType("parm"),
+                                    transformer::run(NodeOperation::getArrayElemtType("parm")),
                                     ">",
                                     ", ",
-                                    NodeOperation::getConstArraySize("parm"),
+                                    transformer::run(NodeOperation::getConstArraySize("parm")),
                                     "> ",
-                                    NodeOperation::getDeclQualifier("parmDecl"),
+                                    transformer::run(NodeOperation::getDeclQualifier("parmDecl")),
                                     name("parmDecl")
                             ))},
-            cat("Changed CStyle Array: ", NodeOperation::getLocOfDecl("parmDecl"))
+            cat("Changed CStyle Array: ", transformer::run(NodeOperation::getLocOfDecl("parmDecl")))
     );
 
     Transformer WarnCStyleMethod {

@@ -9,7 +9,7 @@
 class Printer {
 public:
     Printer();
-    Printer(const int data[5]);
+    Printer(int data[5]);
 
     void print();
 private:

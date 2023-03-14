@@ -13,7 +13,7 @@ Printer::Printer() {
     }
 }
 
-Printer::Printer(const int data[5]) {
+Printer::Printer(int data[5]) {
     for (int i = 0; i < sizeof(data_)/sizeof(data_[0]); ++i) {
         data_[i] = data[i];
     }

@@ -282,6 +282,8 @@ int main(int argc, const char **argv) {
             {
                     addInclude("array", transformer::IncludeFormat::Angled),
                     changeTo(
+                            // The RangeSelector that we are going to replace. From start of parmDecl to end of parmLoc
+                            // in case of constant array this is until end bracket of arr declaration
                             transformer::encloseNodes("arrayDecl", "arrayLoc"),
                             cat(
                                     transformer::run(NodeOps::getVarStorage("arrayDecl")),
@@ -316,6 +318,8 @@ int main(int argc, const char **argv) {
             {
                     addInclude("array", transformer::IncludeFormat::Angled),
                     changeTo(
+                            // The RangeSelector that we are going to replace. From start of parmDecl to end of parmLoc
+                            // in case of constant array this is until end bracket of arr declaration
                             transformer::encloseNodes("parmDecl", "parmLoc"),
                             cat(
                                     transformer::run(NodeOps::getVarStorage("parmDecl")),

@@ -30,9 +30,10 @@ Where \cppinline{functionDecl(hasName("MkX")).bind("fun")} is the ASTMatcher tha
 
 This is then where the \cppinline{Transformer} comes in. The transformer takes the resulting \cppinline{AtomicChange} and the provided metadata and calls a \textit{Consumer} callback with the findings. In this callback, the developers of the tool are then able to provide diagnostic messages and make source code changes if that is what the tool is providing.\cite{ClangTransformerTutorial}
 
-In the official documentation from Clang transformer shown in \cref{code:080dev:TransformerRuleExample} is shown and explained. However, there is no official documentation on how to invoke the transformer and make it write the changes into the existing source code. 
+In the official documentation from Clang, the transformer shown in \cref{code:080dev:TransformerRuleExample} is shown and explained. However, there is no official documentation on how to invoke the transformer and make it write the changes into the existing source code. 
 
-In the public repository for this R\&D project, there is an example folder. This example folder contains multiple examples which show how to create Clang tools that write the results from a \cppinline{Transformer} onto disk.\cite{kristensenMortenhaahrRD2023} In the examples the \cppinline{RefactoringTool} helper class is used to facilitate the source-code changes. This helper class is not documented in Clang's official documentation, but it contains helper methods that make source code changes easier for the developers. 
+The public repository for this R\&D project contains an \href{https://github.com/mortenhaahr/RD/tree/main/examples}{example folder}. This folder contains multiple examples which show how to create Clang tools that write the results from a \cppinline{Transformer} onto disk.\cite{kristensenMortenhaahrRD2023} In the examples the \cppinline{RefactoringTool} helper class is used to facilitate the source-code changes. This helper class is not documented in Clang's official documentation, but it contains helper methods that make source code changes easier for the developers. 
+
 
 
 \section{Example of a C-style to std::array converter}

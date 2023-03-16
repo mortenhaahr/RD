@@ -1,23 +1,20 @@
 \section{Build environment}
 
 The documentation for writing applications using LibTooling such as \cite{MatchingClangAST, ClangTransformerTutorial} mainly concerns writing tools as part of the LLVM project repository. While this is good for contributing to the project, it is not ideal for version control and developing stand-alone projects.
-It was necessary to create a build environment that allowed for out-of-tree builds that utilize LibTooling. A similar attempt was made in \cite{kasmisClangOutoftreeBuild2023} but the project has been abandoned since 2020 and LLVM has since moved from a distributed repository architecture to a monolithic repository architecture, so most of \cite{kasmisClangOutoftreeBuild2023} was obsolete.
+It was necessary to create a build environment that allowed for out-of-tree builds which utilize LibTooling. A similar attempt was made in \cite{kasmisClangOutoftreeBuild2023} but the project was abandoned in 2020 and LLVM has since moved from a distributed repository architecture to a monolithic one making most of \cite{kasmisClangOutoftreeBuild2023} obsolete.
 The following section is dedicated to describing the important decisions made related to the build environment.
 
 \subsection{Build settings}
 
 Initially, some general settings for the project are configured which can be seen in \cref{code:080dev:cmake_base_settings}.
 Line 1 forces Clang as the compiler which is highly recommended as LibTooling was compiled with Clang. Choosing another compiler may result in parts of the project being compiled with another standard library implementation, e.g., libstd++ that is the default for GCC. This may cause incompatibility between the application binary interfaces (ABIs) which is considered undefined behaviour, essentially leaving the entire program behaviour unspecified \cite{cppreferenceUndefinedBehaviorCppreference}. This concept is also known as ABI breakage.
-Line 2 makes CMake generate the file ``compile\_commands.json'' during configuration and contains information related to which compilation command should be invoked on which source file. 
-The file is used by LibTooling as it is needed in order to generate the AST across several compilation units in order to determine their relations \cite{JSONCompilationDatabase}. It should be enabled in all the CMake projects that should allow for Clang AST analysis.
-Line 3 defines the C++ standard version, which is set to C++17 since LibTooling was compiled with this.
-Line 4 defines the output directory of the executable to be in \textinline{<build_folder>/bin} which has importance concerning how LibTooling searches for include directories at run-time as described in \cref{subsec:080dev:rt_include}.
-Finally, line 5 disables Run-Time Type Information (RTTI). RTTI allows the program to identify the type of an object at runtime, among others, by enabling the usage of the functions \cppinline{dynamic_cast} and \cppinline{typeid}. Since LLVM leaves it to the user whether RTTI should be used or not, it will attempt to use an implementation with RTTI if it is not explicitly disabled resulting in a nasty linker error when the implementation has not been compiled.
+Line 2 defines the C++ standard version, which is set to C++17 since LibTooling was compiled with this.
+Line 3 defines the output directory of the executable to be in \textinline{<build_folder>/bin} which has importance concerning how LibTooling searches for include directories at run-time as described in \cref{subsec:080dev:rt_include}.
+Finally, line 4 disables Run-Time Type Information (RTTI). RTTI allows the program to identify the type of an object at runtime by enabling methods such as \cppinline{dynamic_cast} and \cppinline{typeid} among others. When compiling LLVM it is up to the user whether RTTI should be included or not. RTTI is disabled by default when compiling LLVM as it slows down the resulting executable considerably. This flag is propogated to the subprojects that were compiled with LLVM such as LibTooling. By default a project in CMake is compiled with RTTI and CMake will asume that the used libraries were compiled with the same flags. This will result in nasty linker erros and the RTTI should therefore be explicitly disabled in the tool project.
 
 \begin{listing}[H]
     \begin{cmakecode}
 set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 add_compile_options(-fno-rtti)
@@ -27,9 +24,9 @@ add_compile_options(-fno-rtti)
 \end{listing}
 
 \subsection{Run-time include directories}\label{subsec:080dev:rt_include}
-When executing binaries created with LibTooling, a big part of the process consists of analyzing the source code that is to be analyzed, which is done following the pipeline as shown in \cref{fig:030bac:llvmToolchainOverview}.
-Most projects written in C++ make use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, these definitions would also have to be specified to the tool in order to be analyzed, however, it would be tedious for the user to specify manually on every tool invocation.
-For practical reasons, LibTooling provides a mechanism for the automatic discovery of header files that should be included when parsing source files. It finds the headers by using the relative path that the binary is being executed from by searching for a parent directory with the pattern \textinline{lib/clang/<std_version>/include}, where \textinline{<std_version>} indicates which version of the standard library Clang was compiled with (in this project it was 17).
+When executing binaries created with LibTooling, a big part of the process is the analysis of the target source code. The analysis is done following the pipeline as shown in \cref{fig:030bac:llvmToolchainOverview}. Most projects written in C++ make use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, the tool needs to know the definitions for the standard library in order to analyse the target source code. 
+For practical reasons, LibTooling provides a mechanism for the automatic discovery of header files that should be included when parsing source files. It finds the headers by using a relative path with the pattern \textinline{../lib/clang/<std_version>/include} from the location of the binary. Where \textinline{<std_version>} indicates which version of the standard library which the tool was compiled with (in this project it was 17).
+
 This hard-coded approach is quite simple but limited, as it forces the users to only run the tool in a directory where the headers can be found in the relative directory \textinline{<current_dir>/../lib/clang/17/include}.
 If the user attempts to run it somewhere else, and the analyzed files make use of standard library features, they will get an error while parsing the files (e.g. that the header \textinline{<stddef.h>} was not found).
 This issue makes it more difficult to write truly independent tools as they still need some reference to the Clang headers, which would essentially mean moving the executable to the directory where Clang was compiled.
@@ -42,3 +39,7 @@ Instead, it was decided to create a build environment where the user must provid
 The solution is by no means perfect, as the user is still forced to execute the binary from the build directory. In many situations, this is sufficient, as most IDEs follow this behaviour as default and it allows the projects to be built out-of-tree. If the user wishes to run the binary from outside the build directory, they still have the option of specifying the location through the \textinline{-- -I"<clang_include>"} option. The solution can be found in the \href{https://github.com/mortenhaahr/RD/blob/main/examples/c_style_array_converter/cmake/functions.cmake}{functions.cmake} file.
 
 In the future, it may be desirable to explore a solution using the LLVM command line library to search some commonly used directories for the Clang headers.
+
+\subsection{Configuring the target project}
+
+The target project on which source files the tool will be run should generate a compilation database. A compilation database contains information about the compilation commands invoked to build each source file. This file is used by LibTooling to detect the compile commands and include files necessary to generate the correct AST for the compilation unit.\cite{JSONCompilationDatabase} Tools like CMake can auto-generate the compilation commands at configuration time. When using CMake the compilation database generation can be enabled by inserting \cmakeinline{set(CMAKE_EXPORT_COMPILE_COMMANDS 1)} in the CMakeLists.txt file.

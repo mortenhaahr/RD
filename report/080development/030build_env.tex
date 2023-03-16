@@ -4,7 +4,7 @@ The documentation for writing applications using LibTooling such as \cite{Matchi
 It was necessary to create a build environment that allowed for out-of-tree builds that utilize LibTooling. A similar attempt was made in \cite{kasmisClangOutoftreeBuild2023} but the project has been abandoned since 2020 and LLVM has since moved from a distributed repository architecture to a monolithic repository architecture, so most of \cite{kasmisClangOutoftreeBuild2023} was obsolete.
 The following section is dedicated to describing the important decisions made related to the build environment.
 
-\subsection{General build settings}
+\subsection{Build settings}
 
 Initially, some general settings for the project are configured which can be seen in \cref{code:080dev:cmake_base_settings}.
 Line 1 forces Clang as the compiler which is highly recommended as LibTooling was compiled with Clang. Choosing another compiler may result in parts of the project being compiled with another standard library implementation, e.g., libstd++ that is the default for GCC. This may cause incompatibility between the application binary interfaces (ABIs) which is considered undefined behaviour, essentially leaving the entire program behaviour unspecified \cite{cppreferenceUndefinedBehaviorCppreference}. This concept is also known as ABI breakage.
@@ -26,53 +26,19 @@ add_compile_options(-fno-rtti)
     \label{code:080dev:cmake_base_settings}
 \end{listing}
 
-\subsection{Linking against libraries}
-
-%TODO: Write this subsec
-
-\begin{listing}[H]
-    \begin{cmakecode}
-find_package(LLVM REQUIRED CONFIG)
-find_package(Clang REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-include_directories(${LLVM_INCLUDE_DIRS})
-separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-add_definitions(${LLVM_DEFINITIONS_LIST})
-
-add_executable(transformer transformation_base_project.cpp)
-
-target_link_libraries(transformer
-    clangAST
-    clangASTMatchers
-    clangBasic
-    clangFrontend
-    clangSerialization
-    clangTooling
-    clangTransformer
-)
-    \end{cmakecode}
-    \caption{CMake code for linking against Clang libraries and adding the headers.}
-    \label{code:080dev:cmake_link_libraries}
-\end{listing}
-
-
 \subsection{Run-time include directories}\label{subsec:080dev:rt_include}
-When executing binaries created with LibTooling, a big part of the process consists of analyzing the source-code that is to be analyzed, which is done following the pipeline as shown in \cref{fig:030bac:llvmToolchainOverview}.
-Most projects written in C++ makes use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, these definitions would also have to be specified to the tool in order to be analyzed, however, it would be tedious for the user to specify manually on every tool invocation.
-For practical reasons, LibTooling provides a mechanism for automatic discovery of header files that should be included when parsing source files. It finds the headers by using the relative path that the binary is being executed from by searching for a parent-directory with the pattern \textinline{lib/clang/<std_version>/include}, where \textinline{<std_version>} indicates which version of the standard library Clang was compiled with (in this project it was 17).
-This hard-coded approach is quite simple but limited, as it forces the users to only run the tool in a directory where the headers can be found in the relative directory \textinline{<cwd>/../lib/clang/17/include}.
+When executing binaries created with LibTooling, a big part of the process consists of analyzing the source code that is to be analyzed, which is done following the pipeline as shown in \cref{fig:030bac:llvmToolchainOverview}.
+Most projects written in C++ make use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, these definitions would also have to be specified to the tool in order to be analyzed, however, it would be tedious for the user to specify manually on every tool invocation.
+For practical reasons, LibTooling provides a mechanism for the automatic discovery of header files that should be included when parsing source files. It finds the headers by using the relative path that the binary is being executed from by searching for a parent directory with the pattern \textinline{lib/clang/<std_version>/include}, where \textinline{<std_version>} indicates which version of the standard library Clang was compiled with (in this project it was 17).
+This hard-coded approach is quite simple but limited, as it forces the users to only run the tool in a directory where the headers can be found in the relative directory \textinline{<current_dir>/../lib/clang/17/include}.
 If the user attempts to run it somewhere else, and the analyzed files make use of standard library features, they will get an error while parsing the files (e.g. that the header \textinline{<stddef.h>} was not found).
+This issue makes it more difficult to write truly independent tools as they still need some reference to the Clang headers, which would essentially mean moving the executable to the directory where Clang was compiled.
 
-Since tools written with LibTooling are invoking the parser of Clang, it is also possible to forward the include directory to as an argument to the compiler e.g. by specifying \textinline{-- -I"/usr/local/lib/clang/17"}.
-However, this was found to be impractical since the location of the include path may vary depending on the system and since forgetting to write the include path results in some errors that can be very difficult to decipher. This means that if the tool was to be used by people other than the authors, it could provide unnecessary complexity.
+One existing solution is to provide the location of the headers as an argument to the binary when executed. This is possible since tools written with LibTooling invoke the parser of Clang, from where it is possible to forward the include directory as an argument to the compiler e.g. by specifying\\\textinline{-- -I"/usr/local/lib/clang/17"}.
+However, this was found to be impractical since the location of the include path may vary depending on the system and forgetting to write the path results in errors that can be very difficult to decipher.
 
-Instead we ... CMake...
+Instead, it was decided to create a build environment where the user must provide the location of the Clang headers when configuring CMake or an appropriate error message is generated. Through CMake, the necessary headers are then copied to the build directory.
 
-%TODO: Finish writing this
+The solution is by no means perfect, as the user is still forced to execute the binary from the build directory. In many situations, this is sufficient, as most IDEs follow this behaviour as default and it allows the projects to be built out-of-tree. If the user wishes to run the binary from outside the build directory, they still have the option of specifying the location through the \textinline{-- -I"<clang_include>"} option. The solution can be found in the \href{https://github.com/mortenhaahr/RD/blob/main/examples/c_style_array_converter/cmake/functions.cmake}{functions.cmake} file.
 
-
-% Describe default search path is parents from build
-% NOTE: ./transformer ../../input_file.cpp -- -I"/usr/local/lib/clang/17/include/" works for finding stdlib but is specific to the user
-% Solution where providing a stdlib as should be explored using llvm::cl (I think)
+In the future, it may be desirable to explore a solution using the LLVM command line library to search some commonly used directories for the Clang headers.

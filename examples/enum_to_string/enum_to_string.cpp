@@ -147,15 +147,15 @@ namespace NodeOps {
 
     using resType = transformer::MatchConsumer<std::string>;
 
-    template<typename F>
+    template<typename F,
+            // Enable if F is callable with const EnumDecl*, const EnumConstantDecl* and returns a string
+            typename = std::enable_if_t<std::is_same_v<std::invoke_result_t<F &, const EnumDecl *, const EnumConstantDecl *>, std::string>>>
     resType foreach_enum_const(StringRef Id, F callback) {
         return [=](const ast_matchers::MatchFinder::MatchResult &Match) -> Expected<std::string> {
             if (auto enum_decl = Match.Nodes.getNodeAs<EnumDecl>(Id)) {
                 std::stringstream ss;
                 for (const auto enum_const: enum_decl->enumerators()) {
-                    // TODO: Call with EnumConstantDecl instead of StringRef
-                    auto full_name = enum_decl->getNameAsString() + "::" + enum_const->getNameAsString();
-                    ss << callback(full_name);
+                    ss << callback(enum_decl, enum_const);
                 }
                 return ss.str();
             }
@@ -165,19 +165,17 @@ namespace NodeOps {
     }
 
     resType case_enum_to_string(StringRef Id) {
-        // TODO: Make work with EnumConstantDecl instead of StringRef
-        auto lambda = [](StringRef name) {
-            auto name_str = name.str();
-            return "\t\tcase " + name_str + ": return \"" + name_str + "\";\n";
+        auto lambda = [](const EnumDecl *enum_decl, const EnumConstantDecl *enum_const_decl) {
+            return "\t\tcase " + enum_decl->getNameAsString() + "::" + enum_const_decl->getNameAsString() +
+                   ": return \"" + enum_const_decl->getNameAsString() + "\";\n";
         };
-        return foreach_enum_const<decltype(lambda)>(Id, lambda);
+        return foreach_enum_const(Id, lambda);
     }
 
     resType case_string_to_enum(StringRef Id) {
-        // TODO: Make work with EnumConstantDecl instead of StringRef
-        auto lambda = [](StringRef name) {
-            auto name_str = name.str();
-            return "\tif(str == \"" + name_str + "\")\n\t\treturn " + name_str + ";\n";
+        auto lambda = [](const EnumDecl *enum_decl, const EnumConstantDecl *enum_const_decl) {
+            return "\tif(str == \"" + enum_const_decl->getNameAsString() + "\")\n\t\treturn " +
+                   enum_decl->getNameAsString() + "::" + enum_const_decl->getNameAsString() + ";\n";
         };
         return foreach_enum_const<decltype(lambda)>(Id, lambda);
     }
@@ -218,9 +216,9 @@ int main(int argc, const char **argv) {
                                     // to_enum method
                                     "\n\nconstexpr ",
                                     transformer::name("enumDecl"),
-                                    " to_enum(const std::string_view& str, ",
+                                    " to_enum(const std::string_view& str, [[maybe_unused]] ",
                                     transformer::name("enumDecl"),
-                                    " unused = {}){\n",
+                                    " _ = {}){\n",
                                     transformer::run(NodeOps::case_string_to_enum("enumDecl")),
                                     "\n\tthrow std::invalid_argument(\"Not a valid enum of type ",
                                     transformer::name("enumDecl"),

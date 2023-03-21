@@ -13,3 +13,6 @@
     \caption{Clang and LibTooling overview}
     \label{fig:030bac:clangToolingOverview}
 \end{figure}
+
+
+There are two overall methods of writing standalone tools for the Clang frontend. They can either be made with the visitor pattern using the RecursiveASTVisitor, or they can be made with LibTooling which abstarcts away from the RecursiveASTVisitor but allows for the same functionality. This R\&D project will use LibTooling for the development of Clang tools.\cite{HowWriteRecursiveASTVisitor,LibToolingClang17}

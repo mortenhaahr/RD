@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <optional>
 
 using namespace clang;
 
@@ -182,6 +183,25 @@ namespace NodeOps {
 
 } //end namespace NodeOps
 
+static std::optional<DynTypedNode> try_get_node(const ast_matchers::BoundNodes &Nodes,
+                                                StringRef ID) {
+    auto &NodesMap = Nodes.getMap();
+    auto It = NodesMap.find(ID);
+    if (It == NodesMap.end())
+        return std::nullopt;
+    return It->second;
+}
+
+transformer::RangeSelector if_bound_range(std::string ID, transformer::RangeSelector true_eval, transformer::RangeSelector false_eval){
+    return [=](const ast_matchers::MatchFinder::MatchResult &Result) -> Expected<CharSourceRange> {
+        std::optional<DynTypedNode> Node = try_get_node(Result.Nodes, ID);
+        if(Node.has_value()){
+            return true_eval(Result);
+        }
+        return false_eval(Result);
+    };
+}
+
 int main(int argc, const char **argv) {
     // Configuring the command-line options
     llvm::cl::OptionCategory MyToolCategory("my-tool options");
@@ -196,15 +216,31 @@ int main(int argc, const char **argv) {
     // Using refactoring tool since it allows `runAndSave` instead of `run`
     EnumStringGeneratorTool tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-    auto enumFinder = ast_matchers::enumDecl(clang::ast_matchers::isExpansionInMainFile()).bind("enumDecl");
+    // TODO: Currently matches on e.g. void to_string(int). Fix so that it is void to_string(EnumType)
+    auto has_to_string = ast_matchers::functionDecl(
+            ast_matchers::allOf(
+                    ast_matchers::isExpansionInMainFile(),
+                    ast_matchers::hasName("to_string"),
+                    ast_matchers::hasParameter(0, ast_matchers::hasType(ast_matchers::asString("int")))
+            )
+    ).bind("to_string");
+
+    auto enumFinder = ast_matchers::enumDecl(
+            ast_matchers::isExpansionInMainFile(),
+            ast_matchers::optionally(
+                ast_matchers::hasDeclContext(
+                        ast_matchers::hasDescendant(has_to_string)
+                )
+            )
+    ).bind("enumDecl");
 
     auto findEnums = transformer::makeRule(
             enumFinder,
             {
                     addInclude("string_view", transformer::IncludeFormat::Angled),
                     addInclude("stdexcept", transformer::IncludeFormat::Angled),
-                    transformer::insertAfter(
-                            transformer::node("enumDecl"),
+                    transformer::changeTo(
+                            if_bound_range("to_string", transformer::node("to_string"), transformer::after(transformer::node("enumDecl"))),
                             transformer::cat(
                                     // to_string method
                                     "\n\nconstexpr std::string_view to_string(",

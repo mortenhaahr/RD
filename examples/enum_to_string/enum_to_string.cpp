@@ -16,6 +16,7 @@
 #include <sstream>
 
 using namespace clang;
+using namespace clang::ast_matchers;
 
 #define append_file_line(arg) append_file_line_impl(arg, __FILE__, __LINE__)
 
@@ -218,6 +219,61 @@ if_bound_range(std::string ID, transformer::RangeSelector true_eval,
 	};
 }
 
+namespace m {
+const DeclContext* outer_parent_decl(const DeclContext* context){
+	auto p = context->getParent();
+	if(p){
+		outer_parent_decl(p);
+	}
+	return context;
+}
+
+/// Warning: Use at own risk. Might match multiple types e.g. on record declarations.
+/// E.g.
+AST_MATCHER_P(Decl, hasOuterParentDecl,
+			  clang::ast_matchers::internal::Matcher<Decl>, InnerMatcher) {
+	auto cur_ctx = Node.getDeclContext();
+	if(!cur_ctx){return false;}
+	if(InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx), Finder, Builder)){
+		return true;
+	}
+	while(true){
+		cur_ctx = cur_ctx->getParent();
+		if(!cur_ctx){
+			return false;
+		}
+		auto res = InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx), Finder, Builder);
+		if(res) {
+			return true;
+		} // match translationUnitDecl(forAll(enumDecl()))
+	}
+}
+
+/// Basically a copy paste of the hasUnqualifiedDesugaredType` but where only the desugaring case is handled
+AST_MATCHER_P(Type, hasDesugaredType, clang::ast_matchers::internal::Matcher<Type>, InnerMatcher) {
+	//	const DeclContext *DC = Node.getDeclContext();
+	//	if (!DC) return false;
+	//	return InnerMatcher.matches(*Decl::castFromDeclContext(DC), Finder, Builder);
+	auto *Cur = &Node;
+//	cast<ElaboratedType>(Cur);
+	while (true) {
+		switch (Cur->getTypeClass()) {
+#define ABSTRACT_TYPE(Class, Parent)
+#define TYPE(Class, Parent) \
+    case Class: { \
+      const auto *Ty = cast<Class##Type>(Cur); \
+      if (!Ty->isSugared()) return Cur; \
+      Cur = Ty->desugar().getTypePtr(); \
+      break; \
+    }
+		default:
+			return Cur;
+		}
+	}
+}
+
+}	// namespace m
+
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
 	llvm::cl::OptionCategory MyToolCategory("my-tool options");
@@ -234,29 +290,29 @@ int main(int argc, const char **argv) {
 	EnumStringGeneratorTool tool(OptionsParser.getCompilations(),
 								 OptionsParser.getSourcePathList());
 
-	// TODO: Currently matches on e.g. void to_string(int). Fix so that it is
-	// void to_string(EnumType)
-	auto has_to_string =
-		ast_matchers::functionDecl(
-			ast_matchers::allOf(
-				ast_matchers::isExpansionInMainFile(),
-				ast_matchers::hasName("to_string"),
-				ast_matchers::hasParameter(
-					0, ast_matchers::hasType(ast_matchers::asString("int")))))
-			.bind("to_string");
+	auto has_enum_to_string =
+		functionDecl(allOf(hasName("to_string"),
+						   hasParameter(0, hasType(m::hasDesugaredType(equalsBoundNode("enumType"))))))
+			.bind("toString");
 
-	auto enumFinder = ast_matchers::enumDecl(
-						  ast_matchers::isExpansionInMainFile(),
-						  ast_matchers::optionally(ast_matchers::hasDeclContext(
-							  ast_matchers::hasDescendant(has_to_string))))
-						  .bind("enumDecl");
+//	auto has_enum_to_string =
+//		functionDecl(allOf(hasName("to_string"),
+//						   hasParameter(0, hasType(asString("Food")))))
+//			.bind("toString");
+
+
+	auto enumFinder =
+		enumDecl(isExpansionInMainFile(),
+				 has(enumConstantDecl(hasType(type().bind("enumType")))),
+				 optionally(m::hasOuterParentDecl(hasDescendant(has_enum_to_string))))
+			.bind("enumDecl");
 
 	auto findEnums = transformer::makeRule(
 		enumFinder,
 		{addInclude("string_view", transformer::IncludeFormat::Angled),
 		 addInclude("stdexcept", transformer::IncludeFormat::Angled),
 		 transformer::changeTo(
-			 if_bound_range("to_string", transformer::node("to_string"),
+			 if_bound_range("toString", transformer::node("toString"),
 							transformer::after(transformer::node("enumDecl"))),
 			 transformer::cat(
 				 // to_string method

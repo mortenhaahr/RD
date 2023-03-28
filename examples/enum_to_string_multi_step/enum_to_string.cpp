@@ -137,21 +137,63 @@ struct MyConsumer {
 namespace NodeOps {
 
 using resType = transformer::MatchConsumer<std::string>;
+// trim from end (in place)
+static inline void rtrim(std::string &s) {
+	s.erase(std::find_if(s.rbegin(), s.rend(),
+	                     [](unsigned char ch) { return !std::isspace(ch); })
+	            .base(),
+	        s.end());
+}
 
-template <
-    typename F,
-    // Enable if F is callable with const EnumDecl*, const EnumConstantDecl* and
-    // returns a string
-    typename = std::enable_if_t<std::is_same_v<
-        std::invoke_result_t<F &, const EnumDecl *, const EnumConstantDecl *>,
-        std::string>>>
+resType getSourceText(const transformer::RangeSelector range) {
+	auto lambda = [=](const ast_matchers::MatchFinder::MatchResult &Match)
+	    -> Expected<std::string> {
+		auto qualifierRange = range(Match);
+		if (!qualifierRange) {
+			throw std::invalid_argument(
+			    append_file_line("Not a valid source range"));
+		}
+
+		auto qualifierText =
+		    tooling::getText(qualifierRange.get(), *Match.Context).str();
+
+		// Remove trailing whitespaces
+		rtrim(qualifierText);
+		return qualifierText;
+	};
+	return lambda;
+}
+
+resType name(StringRef Id) {
+	auto lambda = [=](const ast_matchers::MatchFinder::MatchResult &Match)
+	    -> Expected<std::string> {
+		// Name without namespace specifiers
+		if (auto *decl = Match.Nodes.getNodeAs<NamedDecl>(Id)) {
+			return decl->getNameAsString();
+		}
+
+		throw std::invalid_argument(
+		    append_file_line("ID not bound or not NamedDecl: " + Id.str()));
+	};
+	return lambda;
+}
+
+template <typename F,
+          // Enable if F is callable with const
+          // ast_matchers::MatchFinder::MatchResult&, const EnumConstantDecl*
+          // and returns a string
+          typename = std::enable_if_t<std::is_same_v<
+              std::invoke_result_t<
+                  F &, const ast_matchers::MatchFinder::MatchResult &,
+                  const EnumConstantDecl *>,
+              std::string>>>
 resType foreach_enum_const(StringRef Id, F callback) {
 	return [=](const ast_matchers::MatchFinder::MatchResult &Match)
 	           -> Expected<std::string> {
 		if (auto enum_decl = Match.Nodes.getNodeAs<EnumDecl>(Id)) {
 			std::stringstream ss;
 			for (const auto enum_const : enum_decl->enumerators()) {
-				ss << callback(enum_decl, enum_const);
+				ss << callback(Match, enum_const);
 			}
 			return ss.str();
 		}
@@ -161,33 +203,28 @@ resType foreach_enum_const(StringRef Id, F callback) {
 	};
 }
 
-resType case_enum_to_string(StringRef Id) {
-	auto lambda = [](const EnumDecl *enum_decl,
-	                 const EnumConstantDecl *enum_const_decl) {
-		return "\t\tcase " + enum_decl->getNameAsString() +
-		       "::" + enum_const_decl->getNameAsString() + ": return \"" +
-		       enum_const_decl->getNameAsString() + "\";\n";
+resType case_enum_to_string(resType getEnumName, StringRef enumId) {
+	auto lambda = [getEnumName](
+	                  const ast_matchers::MatchFinder::MatchResult &Match,
+	                  const EnumConstantDecl *enum_const_decl) {
+		auto name = getEnumName(Match).get();
+
+		return "\t\tcase " + name + "::" + enum_const_decl->getNameAsString() +
+		       ": return \"" + enum_const_decl->getNameAsString() + "\";\n";
 	};
-	return foreach_enum_const(Id, lambda);
+	return foreach_enum_const(enumId, lambda);
 }
 
-resType case_string_to_enum(StringRef Id) {
-	auto lambda = [](const EnumDecl *enum_decl,
-	                 const EnumConstantDecl *enum_const_decl) {
-		return "\tif(str == \"" + enum_const_decl->getNameAsString() +
-		       "\")\n\t\treturn " + enum_decl->getNameAsString() +
-		       "::" + enum_const_decl->getNameAsString() + ";\n";
-	};
-	return foreach_enum_const<decltype(lambda)>(Id, lambda);
-}
-
-resType addNodeNameToCollection(StringRef Id, std::vector<StringRef> *decls) {
+resType addNodeQualNameToCollection(StringRef Id,
+                                    std::vector<std::string> *decls) {
 	auto lambda = [=](const ast_matchers::MatchFinder::MatchResult &Match)
 	    -> Expected<std::string> {
 		if (auto *decl = Match.Nodes.getNodeAs<NamedDecl>(Id)) {
-			decls->push_back(decl->getName());
+			decls->emplace_back(decl->getQualifiedNameAsString());
+			return "";
 		}
-		return "";
+		throw std::invalid_argument(
+		    append_file_line("ID not bound or not NamedDecl: " + Id.str()));
 	};
 	return lambda;
 }
@@ -209,43 +246,6 @@ int main(int argc, const char **argv) {
 	// Using refactoring tool since it allows `runAndSave` instead of `run`
 	EnumStringGeneratorTool tool(OptionsParser.getCompilations(),
 	                             OptionsParser.getSourcePathList());
-
-	// Binding names
-	auto enum_decl = "enumDecl";
-	auto to_string_method = "to_string";
-
-	// to_string method text
-	auto to_string_text = transformer::cat(
-	    "constexpr std::string_view to_string(", transformer::name(enum_decl),
-	    " e){\n\tswitch(e) {\n",
-	    transformer::run(NodeOps::case_enum_to_string(enum_decl)), "\t}\n}");
-
-	// Collection of existing to_string methods
-	std::vector<StringRef> enums;
-
-	// Matcher of existing to_string methods
-	auto find_exsisting_to_string =
-	    ast_matchers::functionDecl(
-	        ast_matchers::isExpansionInMainFile(),
-	        ast_matchers::hasName(to_string_method),
-	        ast_matchers::hasParameter(
-	            0, ast_matchers::parmVarDecl(ast_matchers::hasType(
-	                   ast_matchers::enumDecl().bind(enum_decl)))))
-	        .bind(to_string_method);
-
-	// Rule for existing to_string methods
-	auto existing_to_string = transformer::makeRule(
-	    find_exsisting_to_string,
-	    {transformer::addInclude("string_view",
-	                             transformer::IncludeFormat::Angled),
-	     transformer::addInclude("stdexcept",
-	                             transformer::IncludeFormat::Angled),
-	     transformer::changeTo(
-	         transformer::node(to_string_method),
-	         transformer::cat(transformer::run(NodeOps::addNodeNameToCollection(
-	                              enum_decl, &enums)),
-	                          to_string_text))},
-	    transformer::cat("Updating existing ", to_string_method, " method"));
 
 	// Common consumer
 	MyConsumer consumer(tool.getChanges());
@@ -269,15 +269,74 @@ int main(int argc, const char **argv) {
 		}
 	};
 
+	// Binding names
+	auto enum_decl = "enumDecl";
+	auto to_string_method = "to_string";
+	auto enum_parm = "enumParm";
+
+	// Collection of existing to_string methods
+	std::vector<std::string> enum_names;
+
+	// Matcher of existing to_string methods
+	auto find_exsisting_to_string =
+	    ast_matchers::functionDecl(
+	        ast_matchers::isExpansionInMainFile(),
+	        ast_matchers::hasName(to_string_method),
+
+	        ast_matchers::hasParameter(
+	            0, ast_matchers::parmVarDecl(
+	                   ast_matchers::hasType(
+	                       ast_matchers::enumDecl().bind(enum_decl)))
+	                   .bind(enum_parm)))
+	        .bind(to_string_method);
+
+	auto get_parmVar_source_ns = NodeOps::getSourceText(transformer::between(
+	    transformer::before(transformer::node(enum_parm)),
+	    transformer::before(transformer::name(enum_parm))));
+
+	// Rule for existing to_string methods
+	auto existing_to_string = transformer::makeRule(
+	    find_exsisting_to_string,
+	    {transformer::addInclude("string_view",
+	                             transformer::IncludeFormat::Angled),
+	     transformer::addInclude("stdexcept",
+	                             transformer::IncludeFormat::Angled),
+	     transformer::changeTo(
+	         transformer::node(to_string_method),
+	         transformer::cat(
+	             "constexpr std::string_view to_string(",
+	             transformer::run(get_parmVar_source_ns),
+	             " e){\n\tswitch(e) {\n",
+	             transformer::run(NodeOps::case_enum_to_string(
+	                 get_parmVar_source_ns, enum_decl)),
+	             "\t}\n}",
+	             transformer::run(NodeOps::addNodeQualNameToCollection(
+	                 enum_decl, &enum_names))))},
+	    transformer::cat("Updating existing ", to_string_method, " method"));
+
 	// Update existing to_string methods with enum parameters
 	runToolWithRule(existing_to_string);
 
-	// Matcher of enums that have no existing to_string method
+	// Format enum_names into StringRefs
+	std::vector<StringRef> enum_tmp;
+	for (std::string &e : enum_names) {
+		e = "::" + e;
+		enum_tmp.emplace_back(StringRef(e));
+	}
+
+	ArrayRef<StringRef> enums(enum_tmp);
+
+	// Matcher of enums that have no existing to_string method. This must be
+	// declared bellow the execution of the first rule, as the `enums` variable
+	// must contain the valid names when this rule is created.
 	auto find_unfound_enums =
 	    ast_matchers::enumDecl(
 	        ast_matchers::isExpansionInMainFile(),
 	        ast_matchers::unless(ast_matchers::hasAnyName(enums)))
 	        .bind(enum_decl);
+
+	auto extract_name_from_enum_decl =
+	    NodeOps::getSourceText(transformer::name(enum_decl));
 
 	// Rule to update the rest of the enums
 	auto rest_of_enums = transformer::makeRule(
@@ -286,8 +345,14 @@ int main(int argc, const char **argv) {
 	                             transformer::IncludeFormat::Angled),
 	     transformer::addInclude("stdexcept",
 	                             transformer::IncludeFormat::Angled),
-	     transformer::changeTo(transformer::node(enum_decl),
-	                           transformer::cat("\n\n", to_string_text))},
+	     transformer::changeTo(
+	         transformer::after(transformer::node(enum_decl)),
+	         transformer::cat("\n\nconstexpr std::string_view to_string(",
+	                          transformer::run(extract_name_from_enum_decl),
+	                          " e){\n\tswitch(e) {\n",
+	                          transformer::run(NodeOps::case_enum_to_string(
+	                              extract_name_from_enum_decl, enum_decl)),
+	                          "\t}\n}"))},
 	    transformer::cat("Adding new ", to_string_method, " method"));
 
 	// Run the second rule

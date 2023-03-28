@@ -14,6 +14,7 @@
 #include <iostream>
 #include <optional>
 #include <sstream>
+#include <type_traits>
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -219,60 +220,36 @@ if_bound_range(std::string ID, transformer::RangeSelector true_eval,
 	};
 }
 
-namespace m {
-const DeclContext* outer_parent_decl(const DeclContext* context){
+namespace matchers {
+const DeclContext *recl_decl_context(const DeclContext *context) {
 	auto p = context->getParent();
-	if(p){
-		outer_parent_decl(p);
+	if (p) {
+		recl_decl_context(p);
 	}
 	return context;
 }
 
-/// Warning: Use at own risk. Might match multiple types e.g. on record declarations.
-/// E.g.
-AST_MATCHER_P(Decl, hasOuterParentDecl,
+/// Warning: Use at own risk. Might match multiple types e.g. on record
+/// declarations. E.g. based on the example from the reference for
+/// `hasDeclContext` It matches twice on class D. Once on the declaration and
+/// once on the definition
+AST_MATCHER_P(Decl, has_rec_decl_context,
 			  clang::ast_matchers::internal::Matcher<Decl>, InnerMatcher) {
 	auto cur_ctx = Node.getDeclContext();
-	if(!cur_ctx){return false;}
-	if(InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx), Finder, Builder)){
-		return true;
+	if (!cur_ctx) {
+		return false;
 	}
-	while(true){
-		cur_ctx = cur_ctx->getParent();
-		if(!cur_ctx){
-			return false;
-		}
-		auto res = InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx), Finder, Builder);
-		if(res) {
-			return true;
-		} // match translationUnitDecl(forAll(enumDecl()))
-	}
-}
-
-/// Basically a copy paste of the hasUnqualifiedDesugaredType` but where only the desugaring case is handled
-AST_MATCHER_P(Type, hasDesugaredType, clang::ast_matchers::internal::Matcher<Type>, InnerMatcher) {
-	//	const DeclContext *DC = Node.getDeclContext();
-	//	if (!DC) return false;
-	//	return InnerMatcher.matches(*Decl::castFromDeclContext(DC), Finder, Builder);
-	auto *Cur = &Node;
-//	cast<ElaboratedType>(Cur);
+	const DeclContext *nxt_ctx = nullptr;
 	while (true) {
-		switch (Cur->getTypeClass()) {
-#define ABSTRACT_TYPE(Class, Parent)
-#define TYPE(Class, Parent) \
-    case Class: { \
-      const auto *Ty = cast<Class##Type>(Cur); \
-      if (!Ty->isSugared()) return Cur; \
-      Cur = Ty->desugar().getTypePtr(); \
-      break; \
-    }
-		default:
-			return Cur;
+		nxt_ctx = cur_ctx->getParent();
+		if (!nxt_ctx) {
+			return InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx),
+										Finder, Builder);
 		}
+		cur_ctx = nxt_ctx;
 	}
 }
-
-}	// namespace m
+}	// namespace matchers
 
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
@@ -291,44 +268,47 @@ int main(int argc, const char **argv) {
 								 OptionsParser.getSourcePathList());
 
 	auto has_enum_to_string =
-		functionDecl(allOf(hasName("to_string"),
-						   hasParameter(0, hasType(m::hasDesugaredType(equalsBoundNode("enumType"))))))
+		functionDecl(
+			allOf(hasName("to_string"),
+				  hasParameter(0, parmVarDecl(hasType(elaboratedType(
+									  namesType(hasDeclaration(enumDecl(
+										  equalsBoundNode("enumDecl"))))))))))
 			.bind("toString");
 
-//	auto has_enum_to_string =
-//		functionDecl(allOf(hasName("to_string"),
-//						   hasParameter(0, hasType(asString("Food")))))
-//			.bind("toString");
-
-
 	auto enumFinder =
-		enumDecl(isExpansionInMainFile(),
-				 has(enumConstantDecl(hasType(type().bind("enumType")))),
-				 optionally(m::hasOuterParentDecl(hasDescendant(has_enum_to_string))))
+		enumDecl(
+			isExpansionInMainFile(),
+			has(enumConstantDecl(hasDeclContext(enumDecl().bind("enumDecl")))),
+			optionally(matchers::has_rec_decl_context(
+				hasDescendant(has_enum_to_string))))
 			.bind("enumDecl");
 
 	auto findEnums = transformer::makeRule(
 		enumFinder,
-		{addInclude("string_view", transformer::IncludeFormat::Angled),
-		 addInclude("stdexcept", transformer::IncludeFormat::Angled),
-		 transformer::changeTo(
-			 if_bound_range("toString", transformer::node("toString"),
-							transformer::after(transformer::node("enumDecl"))),
-			 transformer::cat(
-				 // to_string method
-				 "\n\nconstexpr std::string_view to_string(",
-				 transformer::name("enumDecl"), " e){\n\tswitch(e) {\n",
-				 transformer::run(NodeOps::case_enum_to_string("enumDecl")),
-				 "\t}\n}"
-
-				 // to_enum method
-				 "\n\nconstexpr ",
-				 transformer::name("enumDecl"),
-				 " to_enum(const std::string_view& str, [[maybe_unused]] ",
-				 transformer::name("enumDecl"), " _ = {}){\n",
-				 transformer::run(NodeOps::case_string_to_enum("enumDecl")),
-				 "\n\tthrow std::invalid_argument(\"Not a valid enum of type ",
-				 transformer::name("enumDecl"), "\");\n}"))},
+		{
+			addInclude("string_view", transformer::IncludeFormat::Angled),
+			addInclude("stdexcept", transformer::IncludeFormat::Angled),
+			transformer::changeTo(
+				if_bound_range(
+					"toString", transformer::node("toString"),
+					transformer::after(transformer::node("enumDecl"))),
+				transformer::cat(
+					// to_string method
+					"\n\nconstexpr std::string_view to_string(",
+					transformer::name("enumDecl"), " e){\n\tswitch(e) {\n",
+					transformer::run(NodeOps::case_enum_to_string("enumDecl")),
+					"\t}\n}"))
+			//				 // to_enum method
+			//				 "\n\nconstexpr ",
+			//				 transformer::name("enumDecl"),
+			//				 " to_enum(const std::string_view& str,
+			//[[maybe_unused]]
+			//", 				 transformer::name("enumDecl"), " _ = {}){\n",
+			//				 transformer::run(NodeOps::case_string_to_enum("enumDecl")),
+			//				 "\n\tthrow std::invalid_argument(\"Not a valid enum
+			// of type ", 				 transformer::name("enumDecl"),
+			// "\");\n}"))
+		},
 		transformer::cat("Found something"));
 
 	ast_matchers::MatchFinder finder;

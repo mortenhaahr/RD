@@ -196,6 +196,14 @@ resType case_string_to_enum(StringRef Id) {
 	return foreach_enum_const<decltype(lambda)>(Id, lambda);
 }
 
+resType name_plus_string(StringRef Id, StringRef append) {
+	return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
+		auto src_rng = transformer::name(Id.str())(Match).get();
+		auto text = tooling::getText(src_rng, *Match.Context);
+		return text.str() + append.str();
+	};
+}
+
 }	// end namespace NodeOps
 
 static std::optional<DynTypedNode>
@@ -249,6 +257,24 @@ AST_MATCHER_P(Decl, has_rec_decl_context,
 		cur_ctx = nxt_ctx;
 	}
 }
+
+AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace,
+			  clang::ast_matchers::internal::Matcher<NamespaceDecl>,
+			  InnerMatcher) {
+	auto ns = Node.getAsNamespace();
+	if (!ns) {
+		return false;
+	}
+	auto prefix = Node.getPrefix();
+	while (true) {
+		if (!prefix) {
+			return InnerMatcher.matches(*ns, Finder, Builder);
+		}
+		ns = prefix->getAsNamespace();
+		prefix = prefix->getPrefix();
+	}
+}
+
 }	// namespace matchers
 
 int main(int argc, const char **argv) {
@@ -270,9 +296,13 @@ int main(int argc, const char **argv) {
 	auto has_enum_to_string =
 		functionDecl(
 			allOf(hasName("to_string"),
-				  hasParameter(0, parmVarDecl(hasType(elaboratedType(
-									  namesType(hasDeclaration(enumDecl(
-										  equalsBoundNode("enumDecl"))))))))))
+				  hasParameter(
+					  0, parmVarDecl(hasType(elaboratedType(
+							 namesType(hasDeclaration(
+								 enumDecl(equalsBoundNode("enumDecl")))),
+							 optionally(
+								 hasQualifier(matchers::rec_specifies_namespace(
+									 namespaceDecl().bind("namespace"))))))))))
 			.bind("toString");
 
 	auto enumFinder =
@@ -282,6 +312,12 @@ int main(int argc, const char **argv) {
 			optionally(matchers::has_rec_decl_context(
 				hasDescendant(has_enum_to_string))))
 			.bind("enumDecl");
+
+	auto potentially_print_namespace =
+		transformer::ifBound("namespace",	// if namespace bound
+							 transformer::run(NodeOps::name_plus_string(
+								 "namespace", "::")),	// Print namespace
+							 transformer::cat(""));		// Else do nothing
 
 	auto findEnums = transformer::makeRule(
 		enumFinder,
@@ -295,7 +331,8 @@ int main(int argc, const char **argv) {
 				transformer::cat(
 					// to_string method
 					"\n\nconstexpr std::string_view to_string(",
-					transformer::name("enumDecl"), " e){\n\tswitch(e) {\n",
+					potentially_print_namespace, transformer::name("enumDecl"),
+					" e){\n\tswitch(e) {\n",
 					transformer::run(NodeOps::case_enum_to_string("enumDecl")),
 					"\t}\n}"))
 			//				 // to_enum method
@@ -304,8 +341,8 @@ int main(int argc, const char **argv) {
 			//				 " to_enum(const std::string_view& str,
 			//[[maybe_unused]]
 			//", 				 transformer::name("enumDecl"), " _ = {}){\n",
-			//				 transformer::run(NodeOps::case_string_to_enum("enumDecl")),
-			//				 "\n\tthrow std::invalid_argument(\"Not a valid enum
+			//	 transformer::run(NodeOps::case_string_to_enum("enumDecl")),
+			// "\n\tthrow std::invalid_argument(\"Not a valid enum
 			// of type ", 				 transformer::name("enumDecl"),
 			// "\");\n}"))
 		},

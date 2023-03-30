@@ -145,17 +145,39 @@ static inline void rtrim(std::string &s) {
 	        s.end());
 }
 
-resType getSourceText(const transformer::RangeSelector range) {
+resType getSourceText(transformer::RangeSelector range) {
 	auto lambda = [=](const ast_matchers::MatchFinder::MatchResult &Match)
 	    -> Expected<std::string> {
-		auto qualifierRange = range(Match);
-		if (!qualifierRange) {
+		auto source_range = range(Match);
+		if (!source_range) {
 			throw std::invalid_argument(
 			    append_file_line("Not a valid source range"));
 		}
 
-		auto qualifierText =
-		    tooling::getText(qualifierRange.get(), *Match.Context).str();
+		return tooling::getText(source_range.get(), *Match.Context).str();
+	};
+	return lambda;
+}
+
+resType getParmVarSourceTextWithoutName(StringRef Id) {
+	auto lambda = [=](const ast_matchers::MatchFinder::MatchResult &Match)
+	    -> Expected<std::string> {
+		static auto nodeText = getSourceText(transformer::node(Id.str()));
+
+		auto qualifierText = nodeText(Match).get();
+
+		auto parmVarNode = Match.Nodes.getNodeAs<ParmVarDecl>(Id);
+		if (!parmVarNode) {
+			throw std::invalid_argument(append_file_line(
+			    "Id not bound or not ParmVarDecl: " + Id.str()));
+		}
+
+		// Remove trailing whitespaces
+		rtrim(qualifierText);
+		auto parmName = parmVarNode->getNameAsString();
+
+		qualifierText =
+		    qualifierText.substr(0, qualifierText.size() - parmName.size());
 
 		// Remove trailing whitespaces
 		rtrim(qualifierText);
@@ -296,9 +318,7 @@ int main(int argc, const char **argv) {
 	        .bind(to_string_method);
 
 	auto get_parmVar_source_namespace =
-	    NodeOps::getSourceText(transformer::between(
-	        transformer::before(transformer::node(enum_parm)),
-	        transformer::before(transformer::name(enum_parm))));
+	    NodeOps::getParmVarSourceTextWithoutName(StringRef(enum_parm));
 
 	// Rule for existing to_string methods
 	auto rule_existing_to_string_method = transformer::makeRule(

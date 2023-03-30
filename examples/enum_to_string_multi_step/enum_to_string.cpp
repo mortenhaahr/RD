@@ -25,6 +25,19 @@ std::string append_file_line_impl(const std::string &what, const char *file,
 	       "\n";
 }
 
+static llvm::cl::OptionCategory MyToolCategory(
+    "Enum to string generator",
+    "This tool will generate to_string methods for all the enums in the "
+    "specified source code.");
+static llvm::cl::opt<bool> Inplace(
+    "in_place",
+    llvm::cl::desc("Inplace edit <file>s, if specified. If not specified the "
+                   "generated code will be printed to cout."),
+    llvm::cl::cat(MyToolCategory));
+static llvm::cl::opt<bool> DebugMsgs(
+    "debug_info", llvm::cl::desc("Print debug information to cout."),
+    llvm::cl::cat(MyToolCategory));
+
 struct EnumStringGeneratorTool : public tooling::ClangTool {
 	EnumStringGeneratorTool(
 	    const tooling::CompilationDatabase &Compilations,
@@ -96,6 +109,11 @@ struct EnumStringGeneratorTool : public tooling::ClangTool {
 				return false;
 			}
 
+			if (!Inplace) {
+				llvm::outs() << new_code.get();
+				continue;
+			}
+
 			// Replace the entire file with the new code
 			auto fileRange = SourceRange(sm.getLocForStartOfFile(id),
 			                             sm.getLocForEndOfFile(id));
@@ -121,7 +139,9 @@ struct MyConsumer {
 				                     llvm::toString(C.takeError()) + "\n"));
 			}
 			// Print the metadata of the change
-			std::cout << C.get().Metadata << "\n";
+			if (DebugMsgs) {
+				std::cout << "Debug: " << C.get().Metadata << "\n";
+			}
 
 			// Save the changes to be handled later
 			Changes.insert(Changes.begin(), C.get().Changes.begin(),
@@ -260,7 +280,7 @@ resType addNodeQualNameToCollection(StringRef Id,
 
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
-	llvm::cl::OptionCategory MyToolCategory("my-tool options");
+
 	auto ExpectedParser =
 	    clang::tooling::CommonOptionsParser::create(argc, argv, MyToolCategory);
 	if (!ExpectedParser) {

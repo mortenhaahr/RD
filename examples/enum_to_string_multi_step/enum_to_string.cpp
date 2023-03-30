@@ -207,10 +207,15 @@ resType case_enum_to_string(resType getEnumName, StringRef enumId) {
 	auto lambda = [getEnumName](
 	                  const ast_matchers::MatchFinder::MatchResult &Match,
 	                  const EnumConstantDecl *enum_const_decl) {
-		auto name = getEnumName(Match).get();
+		auto name = getEnumName(Match);
+		if (!name) {
+			throw std::invalid_argument(
+			    append_file_line("Could not get name for enum!"));
+		}
 
-		return "\t\tcase " + name + "::" + enum_const_decl->getNameAsString() +
-		       ": return \"" + enum_const_decl->getNameAsString() + "\";\n";
+		return "\t\tcase " + name.get() +
+		       "::" + enum_const_decl->getNameAsString() + ": return \"" +
+		       enum_const_decl->getNameAsString() + "\";\n";
 	};
 	return foreach_enum_const(enumId, lambda);
 }
@@ -220,7 +225,7 @@ resType addNodeQualNameToCollection(StringRef Id,
 	auto lambda = [=](const ast_matchers::MatchFinder::MatchResult &Match)
 	    -> Expected<std::string> {
 		if (auto *decl = Match.Nodes.getNodeAs<NamedDecl>(Id)) {
-			decls->emplace_back(decl->getQualifiedNameAsString());
+			decls->emplace_back("::" + decl->getQualifiedNameAsString());
 			return "";
 		}
 		throw std::invalid_argument(
@@ -278,7 +283,7 @@ int main(int argc, const char **argv) {
 	std::vector<std::string> enum_names;
 
 	// Matcher of existing to_string methods
-	auto find_exsisting_to_string =
+	auto match_exsisting_to_string_method =
 	    ast_matchers::functionDecl(
 	        ast_matchers::isExpansionInMainFile(),
 	        ast_matchers::hasName(to_string_method),
@@ -290,13 +295,14 @@ int main(int argc, const char **argv) {
 	                   .bind(enum_parm)))
 	        .bind(to_string_method);
 
-	auto get_parmVar_source_ns = NodeOps::getSourceText(transformer::between(
-	    transformer::before(transformer::node(enum_parm)),
-	    transformer::before(transformer::name(enum_parm))));
+	auto get_parmVar_source_namespace =
+	    NodeOps::getSourceText(transformer::between(
+	        transformer::before(transformer::node(enum_parm)),
+	        transformer::before(transformer::name(enum_parm))));
 
 	// Rule for existing to_string methods
-	auto existing_to_string = transformer::makeRule(
-	    find_exsisting_to_string,
+	auto rule_existing_to_string_method = transformer::makeRule(
+	    match_exsisting_to_string_method,
 	    {transformer::addInclude("string_view",
 	                             transformer::IncludeFormat::Angled),
 	     transformer::addInclude("stdexcept",
@@ -305,22 +311,21 @@ int main(int argc, const char **argv) {
 	         transformer::node(to_string_method),
 	         transformer::cat(
 	             "constexpr std::string_view to_string(",
-	             transformer::run(get_parmVar_source_ns),
+	             transformer::run(get_parmVar_source_namespace),
 	             " e){\n\tswitch(e) {\n",
 	             transformer::run(NodeOps::case_enum_to_string(
-	                 get_parmVar_source_ns, enum_decl)),
+	                 get_parmVar_source_namespace, enum_decl)),
 	             "\t}\n}",
 	             transformer::run(NodeOps::addNodeQualNameToCollection(
 	                 enum_decl, &enum_names))))},
 	    transformer::cat("Updating existing ", to_string_method, " method"));
 
 	// Update existing to_string methods with enum parameters
-	runToolWithRule(existing_to_string);
+	runToolWithRule(rule_existing_to_string_method);
 
 	// Format enum_names into StringRefs
 	std::vector<StringRef> enum_tmp;
 	for (std::string &e : enum_names) {
-		e = "::" + e;
 		enum_tmp.emplace_back(StringRef(e));
 	}
 
@@ -329,7 +334,7 @@ int main(int argc, const char **argv) {
 	// Matcher of enums that have no existing to_string method. This must be
 	// declared bellow the execution of the first rule, as the `enums` variable
 	// must contain the valid names when this rule is created.
-	auto find_unfound_enums =
+	auto find_other_enums =
 	    ast_matchers::enumDecl(
 	        ast_matchers::isExpansionInMainFile(),
 	        ast_matchers::unless(ast_matchers::hasAnyName(enums)))
@@ -339,8 +344,8 @@ int main(int argc, const char **argv) {
 	    NodeOps::getSourceText(transformer::name(enum_decl));
 
 	// Rule to update the rest of the enums
-	auto rest_of_enums = transformer::makeRule(
-	    find_unfound_enums,
+	auto rule_other_enums = transformer::makeRule(
+	    find_other_enums,
 	    {transformer::addInclude("string_view",
 	                             transformer::IncludeFormat::Angled),
 	     transformer::addInclude("stdexcept",
@@ -356,5 +361,5 @@ int main(int argc, const char **argv) {
 	    transformer::cat("Adding new ", to_string_method, " method"));
 
 	// Run the second rule
-	return runToolWithRule(rest_of_enums, true);
+	return runToolWithRule(rule_other_enums, true);
 }

@@ -1,0 +1,52 @@
+\section{Tool examples}
+
+This section contains examples of implementations of clang tools. The purpose of the examples is to show how the theory described in \cref{sec:080dev:tool_structure} can be used. All the code for the examples can be found in the \href{https://github.com/mortenhaahr/RD/tree/main/examples}{git repository} for this project. 
+
+Each example will be split into the four sections of a clang tool as described in \cref{sec:080dev:tool_structure}.
+
+\subsection{Simple rename refactoring tool}
+
+The goal of this tool is to rename all functions in the provided source code that has the name ``MkX'' into ``MakeX''. The tool should both rename the function declaration and the locations where it is called.
+
+\subsubsection*{Command line parsing}
+
+In order to make this tool as simple as possible, the name of the method to rename and the new name have been fixed. Because there is no settings that can be tweeked by the user except for the command line settings that are common accross all ClangTools. The common commandline options can be used by making a \cppinline{CommonOptionsParser}. The way to create such an object can be seen on \cref{code:080dev:common_cli_options}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+#include "clang/Tooling/CommonOptionsParser.h"
+#include "llvm/Support/CommandLine.h"
+
+static llvm::cl::OptionCategory MyToolCategory("my-tool options");
+
+int main(int argc, const char* argv[]) {
+	auto ExpectedParser = clang::tooling::CommonOptionsParser::create(argc, argv, MyToolCategory);
+	if (!ExpectedParser) {
+		// Fail gracefully for unsupported options.
+		llvm::errs() << ExpectedParser.takeError();
+		return 1;
+	}
+	clang::tooling::CommonOptionsParser &OptionsParser = ExpectedParser.get();
+
+    return 0;
+}
+    \end{cppcode}
+    \caption{Example code which shows the creation of the \cppinline{CommonOptionsParser} used for all ClangTools.}
+    \label{code:080dev:common_cli_options}
+\end{listing}
+
+\subsubsection*{AST node matching}
+
+\begin{listing}[H]
+    \begin{cppcode}
+
+    \end{cppcode}
+    \caption{This example shows a matcher that will match on any function declaration wich has the name ``MkX''.}
+    \label{code:080dev:match_functionDecl_with_name}
+\end{listing}
+
+\subsubsection*{Node data processing}
+\subsubsection*{Handling the results}
+
+
+\subsection{CStyle array converter}

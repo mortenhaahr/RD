@@ -140,7 +140,7 @@ struct MyConsumer {
 			}
 			// Print the metadata of the change
 			if (DebugMsgs) {
-				std::cout << "Debug: " << C.get().Metadata << "\n";
+				llvm::errs() << "Debug: " << C.get().Metadata << "\n";
 			}
 
 			// Save the changes to be handled later
@@ -288,6 +288,7 @@ int main(int argc, const char **argv) {
 		llvm::errs() << ExpectedParser.takeError();
 		return 1;
 	}
+
 	clang::tooling::CommonOptionsParser &OptionsParser = ExpectedParser.get();
 
 	// Using refactoring tool since it allows `runAndSave` instead of `run`

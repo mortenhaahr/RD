@@ -202,7 +202,7 @@ resType case_enum_to_string(transformer::RangeSelector typeRange,
 	auto lambda = [typeRange](
 	                  const ast_matchers::MatchFinder::MatchResult &Match,
 	                  const EnumConstantDecl *enum_const_decl) {
-		static auto getEnumTypeFromSource = transformer::cat(typeRange);
+		auto getEnumTypeFromSource = transformer::cat(typeRange);
 		auto enumTypeFromSource = getEnumTypeFromSource->eval(Match);
 		if (!enumTypeFromSource) {
 			throw std::invalid_argument(

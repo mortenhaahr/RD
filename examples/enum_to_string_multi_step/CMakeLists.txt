@@ -30,7 +30,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
-add_executable(enum_to_string enum_to_string.cpp)
+add_executable(enum_to_string enum_to_string_v3.cpp)
 
 # Link against LLVM libraries
 target_link_libraries(enum_to_string

@@ -1,0 +1,6 @@
+- Write somewhere (not necessarily in this file) other attempts of using LibTooling for source-code generation
+- Write something about the issues with C-style to std::array:
+  - Since the functionality of std::array is a subset of the functionality of C-style arrays there are cases where transformation is impossible.
+- Provide text for LLVM, Clang and LibTooling figures in project description
+- Write something about how our techniques easily can be applied for static analysis as well
+  - Instead of generating code simply report it e.g. as a warning

@@ -24,7 +24,7 @@ add_compile_options(-fno-rtti)
 \end{listing}
 
 \subsection{Run-time include directories}\label{subsec:080dev:rt_include}
-When executing binaries created with LibTooling, a big part of the process is the analysis of the target source code. The analysis is done following the pipeline as shown in \cref{fig:030bac:llvmToolchainOverview}. Most projects written in C++ make use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, the tool needs to know the definitions for the standard library in order to analyse the target source code. 
+When executing binaries created with LibTooling, a big part of the process is the analysis of the target source code. The analysis is done following the pipeline as shown in \cref{fig:040des:llvmToolchainOverview}. Most projects written in C++ make use of the C++ standard library that implements many commonly used functionalities in C++. Naturally, the tool needs to know the definitions for the standard library in order to analyse the target source code. 
 For practical reasons, LibTooling provides a mechanism for the automatic discovery of header files that should be included when parsing source files. It finds the headers by using a relative path with the pattern \textinline{../lib/clang/<std_version>/include} from the location of the binary. Where \textinline{<std_version>} indicates which version of the standard library which the tool was compiled with (in this project it was 17).
 
 This hard-coded approach is quite simple but limited, as it forces the users to only run the tool in a directory where the headers can be found in the relative directory \textinline{<current_dir>/../lib/clang/17/include}.

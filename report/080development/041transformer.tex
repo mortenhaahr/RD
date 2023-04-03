@@ -1,6 +1,6 @@
 \section{Transformer}
 
-Clang provides an interface into its C++ AST called LibTooling. LibTooling is aimed at developers who want to build standalone tools and services that run clang tools.\cite{LibToolingClang17}
+Clang provides an interface into its C++ AST called LibTooling. LibTooling is aimed at developers who want to build standalone tools and services that run clang tools.\cite{llvmLibToolingClang17}
 
 Tools that use LibTooling run what is called 'FrontendActions' over the specified code. It is through these frontend actions the tool can interact with the source code. The LibTooling tools work by parsing the command line options the tool is invoked with through the LLVM command line parser. These options can be customised to allow the tools to work in a user-defined manner. 
 

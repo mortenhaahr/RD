@@ -46,45 +46,55 @@ A combination of narrowing matchers and traversal matchers can then be used to f
 In many scenarios, it may also be necessary to bind child nodes in order to get all the needed information.
 
 Putting it all together, one could write a matcher that matches function declarations that are named ``f'' and that takes at least one parameter. Furthermore, the function declaration and parameter declaration could be bound to the identifiers ``function'' and ``parameter''.
-This can be achieved using a combination of the three categories of matchers with the statement:\\ \cppinline{functionDecl(hasName("f"), hasParameter(0, parmVarDecl().bind("parameter"))).bind("function")}\\
+This can be achieved using a combination of the three categories of matchers with the statement:\\ \cppinline{functionDecl(hasName("f"), hasParameter(0, parmVarDecl().bind("parmBind"))).bind("funcBind")}\\
 In the example the matchers \cppinline{functionDecl} and \cppinline{parmVarDecl} are Node Matchers, \cppinline{hasName} is a Narrowing Matcher and \cppinline{hasParameter}\footnote{The 0 provided in \cppinline{hasParameter} indicates that it must match the first argument of the function.} is a Traversal Matcher.
 
 The composition of matchers is typically done iteratively where one starts by matching a superset of nodes which are iteratively narrowed down until the tool is left with the nodes that contain the needed information. 
 
 \subsection{Node data processing} \label{subsec:080dev:NodeDataProcessing}
 
-When all the nodes have been found, the information stored inside of them must be extracted. The way to do that is by using an object that inherits from \cppinline{MatchFinder::MatchCallback}. The \cppinline{MatchFinder::MatchCallback} class defines the \cppinline{run} method which must be overridden in its children. The run method has a \cppinline{const MatchFinder::MatchResult &Result} parameter which contains all the bound nodes. The information inside the nodes can then be extracted and used to generate diagnostic messages or other information relevant to the tool.
+When the nodes have been matched and bound, the information stored inside of them must be extracted. The way to do so is by using an object that inherits from \cppinline{MatchFinder::MatchCallback}.
+The \\\cppinline{MatchFinder::MatchCallback} class defines the \cppinline{run} method which must be overridden by its children. The run method has a \cppinline{const MatchFinder::MatchResult &Result} parameter which contains the bound nodes of the match (e.g. ``funcBind'' and ``parmBind'' in the example provided earlier).
+The information inside the nodes can then be extracted and used e.g., for source code generation, diagnostic messages or other information relevant to the tool.
 
 The \cppinline{MatchFinder::MatchCallback} is the raw interface which allows for node processing but it lacks many convenience methods and requires the user to save the extracted information explicitly. The Clang developers have created an abstraction over the \cppinline{MatchFinder::MatchCallback} with convenience methods and an automatic way of extracting information. This interface also allows for easy conversion to source code changes. The abstraction is called \cppinline{Transformer} and is what will be used in this R\&D project.
 
-Transformers combine a rewriting rule with a result consumer. Rewriting rules combine a matcher with an AST edit and potential metadata. The AST edit is a change in the source code comprised of a range to rewrite and a concatenation of multiple Stencils which generate the new source text. Stencils extract information from bound nodes and convert the information to strings. A more detailed description of Stencils can be seen in \cref{subsubsec:080dev:stencils}.
+Transformers combine a rewriting rule with a result consumer. Rewriting rules combine a matcher with an AST edit and potential metadata. The AST edit is a change in the source code comprised of a source code location to rewrite and a concatenation of multiple Stencils which generate the new source text. Stencils extract information from bound nodes and convert the information to strings. A more detailed description of Stencils can be seen in \cref{subsubsec:080dev:stencils}.
 
 The result consumer is responsible for saving the relevant results so they can be processed by the \cppinline{ClangTool} later. The result consumer is further described in \cref{subsubsec:080dev:Consumers}.
 
 \subsubsection*{Stencils} \label{subsubsec:080dev:stencils}
 
-The \href{https://github.com/llvm/llvm-project/blob/main/clang/include/clang/Tooling/Transformer/Stencil.h}{stencil library} is used to extract information from bound nodes and convert the information to strings.  The stencil library is an abstraction on top of \cppinline{MatchComputation<std::string>} which is called on matched nodes through the Transformer API. 
+The \href{https://github.com/llvm/llvm-project/blob/main/clang/include/clang/Tooling/Transformer/Stencil.h}{stencil interface} is used to extract information from bound nodes and convert the information to strings.  The stencil interface is an abstraction on top of \cppinline{MatchComputation<std::string>} which is called on matched nodes through the Transformer API. 
 
-Examples of use-cases for the stencil library could be to extract the element type of an array or to issue a warning at a given location. The methods in the stencil library are primarily focused on control flow, concatenation of stencils and expression handling. Therefore it is very likely that the creator of a tool will have to create custom stencils to extract the necessary data from the bound nodes.
+Examples of use-cases for the stencil interface could be to extract the element type of an array or to issue a warning at a given location. The functions of the predefined stencils are primarily focused on control flow, concatenation of stencils and expression handling. Therefore it is very likely that the creator of a tool will have to create custom stencils to extract the necessary data from the bound nodes.
 
-Luckily the stencil library allows the simple conversion from \cppinline{MatchConsumer<std::string>} to a \cppinline{Stencil} through the \cppinline{run} method. The \cppinline{MatchConsumer<T>} type is a typename for \cppinline{std::function<Expected<T>(const ast_matchers::MatchFinder::MatchResult &)>} with \cppinline{std::string} as the template parameter. This API allows the creator of a tool to write small methods that extract the necessary information from a bound node as a string and seamlessly concatenate them together through the \cppinline{cat} method from the stencil library.
+Luckily the stencil interface allows the simple conversion from \cppinline{MatchConsumer<std::string>} to a \cppinline{Stencil} through the \cppinline{run} method. The \cppinline{MatchConsumer<T>} type is a typename for \\ \cppinline{std::function<Expected<T>>(const ast_matchers::MatchFinder::MatchResult &)} with \cppinline{std::string} as the template parameter. This API allows the creator of a tool to write small methods that extract the necessary information from a bound node as a string and seamlessly concatenate them together through the \cppinline{cat} stencil.
 
-All the stencils in the stencil library return strings but it is possible to create an identical library that returns any type of data if that is required for the tool. The reason the stencil library works solely with strings is that it is primarily used to generate source code changes which must be converted to strings in some way or form in order to be written to disk. 
+All the predefined stencils return strings but it is possible to create an similar library that returns any type of data if that is required for the tool. The reason the predefined stencils work solely with strings is that it is primarily used to generate source code changes which must be converted to strings of some sort in order to be written to disk. 
 
-Along with the stencil library is a \href{https://github.com/llvm/llvm-project/blob/main/clang/include/clang/Tooling/Transformer/RangeSelector.h}{range selector library}. The range selector library also uses the \cppinline{MatchConsumer<T>} API but with \cppinline{RangeSelector} as an output instead of strings. This library contains convenience methods to select ranges of bound nodes. It is also possible to select locations right before or right after a bound node. This feature allows the tool implementor to add source code exactly where they want it.
+Similarly to the stencil interface, LibTooling also defines the \href{https://github.com/llvm/llvm-project/blob/main/clang/include/clang/Tooling/Transformer/RangeSelector.h}{range selector interface}.
+This interface also builds upon \cppinline{MatchConsumer<T>} but with \cppinline{CharSourceRange} as an output instead of strings. A \cppinline{CharSourceRange} refers to a range of characters defined at a specific location of the provided source files. It thereby allows the tool implementor to add or modify source code exactly where they want it.
 
 \subsubsection*{Combining matchers and stencils}
 
-In order to create a tool it is necessary to have both matchers and stencils and the tool authors must therefore consider how they should be combined.
+It should be clear by now that in order to create tools, it is necessary to have both matchers and stencils. Within this lies some interesting design decisions of how the matchers and stencils should be used in conjunction.
 
-There are two approaches when combining the matcher and the stencils. The first approach is to have the matcher bind only the top node and then extract all the information from the node through stencils. The other method is to bind multiple nodes inside the matcher to get access to the important information. Both approaches can be used for the same purpose but the implementations look vastly different.
+In general, there are two approaches to take when using matchers and stencils in conjunction.\\
+The first approach is to create a simple matcher that binds only to the outermost node and then create detailed stencils that extract the information based on the single binding.\\
+The second approach is to create a detailed matcher that binds to multiple nodes and then create simple stencils that utilize the many bindings.\\
+Both approaches can be used to implement the same functionality but the implementations look vastly different.
  
-If the implementor chooses the first combination method, then the stencils can become rather complicated because they have to filter and extract information from the node. 
+If the implementor chooses the first approach, then the stencils can easily become complicated because one must filter and extract information from a single node.
 
-If the second method is chosen instead, then the complexity of extracting information from the nodes is placed inside the matcher. This can lead to complicated matchers with many bound subnodes. The stencils that extract information from the bound nodes are however much simpler. When using this method it can be hard to tell when all the necessary information has been bound and the developers can be stuck looking for a matcher that binds to exactly the information needed when it could easily be extracted from a higher node.
+If the second approach is chosen, the responsibility of extracting information from the nodes is placed inside the composed matcher. This can lead to some very complex matchers that can be difficult to understand. However, the stencils that extract information from the bound nodes will be much simpler.\\
+Furthermore, when following this approach one can easily fall into the pitfall of trying to match too much data that is not required at the end.\\
+E.g., when developing the enum tool it was attempted to bind the namespace of the parameter of an existing \cppinline{to_string} function since it was thought to be needed when writing the transformation. In the end, the binding was unnecessary as the namespace could easily be extracted through a stencil and the namespace binding itself did not provide enough context.
+However, a significant amount of time was spent on writing an exact matcher that could recursively traverse the namespace qualifiers of a parameter and bind it.
 
-It is always possible to refactor later, so the developers of the tool should consider the two approaches carefully and choose their battles wisely.
+Ultimately, the best approach to follow depends upon the specific scenario. In some cases, it may be better to write detailed stencils and in other cases detailed matchers. The important thing is to not tunnel-vision too heavily on a single approach and keep an open mind towards the other. Perhaps the best approach lies within a mixture of the two.
 
+% TODO: Morten du er her.
 \subsubsection*{Consuming the transformation changes} \label{subsubsec:080dev:Consumers}
 
 When the bound nodes have been processed through the Transformer API, the transformation changes have to be consumed. This is done through a \cppinline{Consumer} which is a type alias of a functor which takes \cppinline{Expected<TransformerResult<T>>} as a parameter. The \cppinline{TranformerResult<T>} type contains any source code changes that were generated by the rule and the provided metadata with type T.

@@ -1,45 +1,57 @@
 \section{Tool structure} \label{sec:080dev:tool_structure}
 
-Tools created through the LibTooling framework all have a similar structure which can be seen below.   
+Through inspection of existing LibTooling tools, such as \cite{llvmExternalClangExamples} and \cite{llvmLLVMCompilerInfrastructure2023}, and the development of tools for the R\&D project, a common structure for LibTooling tools has been identified. The structure can be used as a way of categorizing the different parts of such tools and can be seen below.
 
-\begin{enumerate}
+\begin{itemize}
     \item Command line parsing
     \item AST node matching
     \item Node data processing
     \item Handling the results
-\end{enumerate}
+\end{itemize}
 
-The \textbf{Command line parsing} section of the tool structure is responsible for the parsing of the command line options which the tool was invoked with and setting the configuration data that specifies the behaviour of the tool. A detailed description of this section of the tool structure can be found in \cref{subsec:080dev:CMDLineParsing}.
+The \textbf{Command line parsing} part of the tool structure is responsible for the parsing of the command line options which the tool was invoked with and setting the configuration data that specifies the behaviour of the tool. A detailed description of this section of the tool structure can be found in \cref{subsec:080dev:CMDLineParsing}.
 
-The \textbf{AST node matching} section of the tool structure is where the AST node matchers are defined. AST node matchers traverse the AST of the source code passed to the tool through the command line and binds relevant nodes to identifiers which can be used in the Node data processing section. For a detailed description of the AST matching step, see \cref{subsec:080dev:ASTNodeMatching}.
+The \textbf{AST node matching} part of the tool structure is where the AST node matchers are defined and certain nodes of interest are bound to identifiers. AST node matchers traverse the AST of the source code passed to the tool through the command line and binds relevant nodes to identifiers which can be used in the Node data processing section. For a detailed description of the AST matching step, see \cref{subsec:080dev:ASTNodeMatching}.
 
-The \textbf{Node data processing} section of the tool structure is where information is extracted from the nodes that were bound during the AST node matching step. This is where the primary functionality of the tool is implemented. There are multiple interfaces which can be to extract information from bound nodes and they will be described in \cref{subsec:080dev:BoundNodeProcessing}.
+The \textbf{Node data processing} part of the tool structure is where information is extracted from the nodes that were bound during the AST node matching step. This is where the primary functionality of the tool is implemented. There are multiple interfaces which can be used to extract information from bound nodes and they are described in \cref{subsec:080dev:NodeDataProcessing}.
 
-The \textbf{Handling the results} part of the tool structure is where the matching and processing, defined in the previous sections, is applied. This is also where all the results are handled and presented to the invoker of the tool. This part of the tool structure is described further in \cref{subsec:080dev:HandlingToolResults}.
+The \textbf{Handling the results} part of the tool structure is where the matching and processing, defined in the previous parts, is applied. This is also where the results are handled and presented to the invoker of the tool. This part of the tool structure is described further in \cref{subsec:080dev:HandlingToolResults}.
 
 
 \subsection{Command line parsing} \label{subsec:080dev:CMDLineParsing}
 
-A good way to tune the tool is through command line arguments. All LibTooling tools come with some general options which are always present. Some of the general options were specified in \cref{sec:080dev:build_env}.
+A good way of configuring the behaviour of a tool is through command line arguments. All LibTooling tools come with some common options which are always present, e.g., the option to parse a list of source files.
 
-The way to add command line options to a tool is through the command line library provided by llvm. This library makes it very easy to add new commands and provide help text for the options. A great example of how to use the library can be found in the implementation of \href{https://github.com/llvm/llvm-project/blob/main/clang/tools/clang-format/ClangFormat.cpp}{ClangFormat}, where they have multiple options with different types and default values.
+The way to add command line options to a tool is through the command line library provided by LLVM. This library makes it very easy to add new commands and provide help text for the options. A great example of how to use the library can be found in the implementation of ClangFormat \cite{llvmClangFormatClangFormat2023}, where they have multiple options with different types and default values.
 
 \subsection{Matching the AST} \label{subsec:080dev:ASTNodeMatching}
 
-The first step in working with LibTooling is to find the AST that is relevant to the tool. This is a very important part of the tool development as the matching defines what kind of information is available for the later stages of the tool. If the wrong AST nodes are matched, the later processing becomes unnecessarily complex and complicated.
+The next step in working with LibTooling is to find the AST that is relevant for the tool through matching and binding. This is a very important part of the tool development as it defines what kind of information is available for the later stages of the tool. If the wrong AST is matched or the wrong nodes are bound, the later processing can become unnecessarily complex and complicated. Furthermore, the task of matching the AST can also be very difficult as there are currently more than 700 different matchers available as part of the library \cite{llvmASTMatcherReference}. 
 
-The easiest way to do that is by creating or finding a very simple example of the code that should be changed. The entire AST for that file can be dumped through clang by invoking: \bashinline{clang -cc1 -ast-dump input_file}. 
-This command will print all the AST information in the input file to the console, which can then be analysed manually for the wanted nodes/patterns.
+A proposed way of matching the AST is by writing or finding a very simple example of the code that should be matched upon. The entire AST for that file can be printed through Clang by invoking:\\ \bashinline{clang -cc1 -ast-dump input_file}. 
+This command will print all the AST information in the input file to the console, which can then be analyzed manually for the wanted nodes/patterns.
 
-After an AST node has been identified as interesting for the tool it should be matched. The way to create a matcher in LibTooling is by using the predefined matchers in the LibTooling framework.\cite{ASTMatcherReference} Custom matchers can also be constructed and they are a very powerful tool when the standard matchers are lacking. The builtin matchers are however enough most of the time and they should therefore be the default place to look when creating a matcher. 
+When an AST node has been identified as interesting to the tool it should be matched, which is typically done by using the predefined matchers of LibTooling \cite{llvmASTMatcherReference}.
+It is also possible to write custom matchers, which can be very powerful when the standard matchers are lacking. An example of such could be if one wishes to recursively traverse the declaration context, which was the case in one of the implementations of the enum tool.
+However, most the time the builtin matchers will be sufficient and they should therefore be the initial place to look when matching the AST.
 
 %TODO: write about custom matchers
-The first step when creating a matcher is to get the wanted node through a Node matcher. These are the matchers which allows one to match some kind of node type and bind it to an identifier. Binding a node allows it to be used in the later stages of tool processing. The node matchers will often match quite a bit of nodes. The number of matches can be controlled through the use of Narrowing matchers which allows the tool authors to filter the matches E.G. only match variable declarations with a constant array type.
+LibTooling defines three different basic categories of ``Matchers'' available to the users: Node Matchers, Narrowing Matchers and Traversal Matchers.
+The Node Matchers are the most general matchers and matches specific types of AST Nodes, e.g., \cppinline{enumDecl} and \cppinline{constantArrayType}. A subset of the Node Matchers are also bindable, meaning that they can be bound to an identifier and processed in the later stages of the tool.
+The Narrowing Matchers can be used to filter nodes that fulfil certain requirements, e.g. \cppinline{hasName} and \cppinline{isClass}. It also contains logical expressions such as \cppinline{allOf},\cppinline{anyOf} and \cppinline{unless}.
+The Traversal Matchers can be used to traverse the node with its parents or children and thereby specify and bind to certain relations of subnodes. Examples of Traversal Matchers are \cppinline{hasDescendant}, \cppinline{specifiesType} \cite{llvmASTMatcherReference}.
 
-The creation of the matcher is therefore an iterative process where nodes are matched and the matches are narrowed until the tool is left with the nodes that contain the needed information. The matching iterations should stop when all the wanted nodes are matched.
+When composing a matcher, i.e., combining several matchers, one typically starts by identifying the overall node type that wishes to be matched. This will be the outermost Node Matcher and in most cases, this should be bound.
+A combination of narrowing matchers and traversal matchers can then be used to filter the matches depending on the information the tool needs.
+In many scenarios, it may also be necessary to bind child nodes in order to get all the needed information.
 
+Putting it all together, one could write a matcher that matches function declarations that are named ``f'' and that takes at least one parameter. Furthermore, the function declaration and parameter declaration could be bound to the identifiers ``function'' and ``parameter''.
+This can be achieved using a combination of the three categories of matchers with the statement:\\ \cppinline{functionDecl(hasName("f"), hasParameter(0, parmVarDecl().bind("parameter"))).bind("function")}\\
+In the example the matchers \cppinline{functionDecl} and \cppinline{parmVarDecl} are Node Matchers, \cppinline{hasName} is a Narrowing Matcher and \cppinline{hasParameter}\footnote{The 0 provided in \cppinline{hasParameter} indicates that it must match the first argument of the function.} is a Traversal Matcher.
 
-\subsection{Bound node processing} \label{subsec:080dev:BoundNodeProcessing}
+The composition of matchers is typically done iteratively where one starts by matching a superset of nodes which are iteratively narrowed down until the tool is left with the nodes that contain the needed information. 
+
+\subsection{Node data processing} \label{subsec:080dev:NodeDataProcessing}
 
 When all the nodes have been found, the information stored inside of them must be extracted. The way to do that is by using an object that inherits from \cppinline{MatchFinder::MatchCallback}. The \cppinline{MatchFinder::MatchCallback} class defines the \cppinline{run} method which must be overridden in its children. The run method has a \cppinline{const MatchFinder::MatchResult &Result} parameter which contains all the bound nodes. The information inside the nodes can then be extracted and used to generate diagnostic messages or other information relevant to the tool.
 
@@ -69,7 +81,7 @@ There are two approaches when combining the matcher and the stencils. The first 
  
 If the implementor chooses the first combination method, then the stencils can become rather complicated because they have to filter and extract information from the node. 
 
-If the second method is chosen instead, then the complexity of extracting information from the nodes is placed inside the mathcer. This can lead to complicated matchers with many bound subnodes. The stencils that extract information from the bound nodes are however much simpler. When using this method it can be hard to tell when all the necessary information has been bound and the developers can be stuck looking for a matcher that binds to exactly the information needed when it could easily be extracted from a higher node.
+If the second method is chosen instead, then the complexity of extracting information from the nodes is placed inside the matcher. This can lead to complicated matchers with many bound subnodes. The stencils that extract information from the bound nodes are however much simpler. When using this method it can be hard to tell when all the necessary information has been bound and the developers can be stuck looking for a matcher that binds to exactly the information needed when it could easily be extracted from a higher node.
 
 It is always possible to refactor later, so the developers of the tool should consider the two approaches carefully and choose their battles wisely.
 

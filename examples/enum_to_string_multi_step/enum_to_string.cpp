@@ -234,6 +234,13 @@ resType addNodeQualNameToCollection(StringRef Id,
 
 }  // end namespace NodeOps
 
+namespace matchers {
+	/// Returns false if not named - e.g. unnamed enum
+	AST_MATCHER(NamedDecl, is_named) {
+		return Node.getIdentifier(); // nullptr if no name
+	}
+}
+
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
 
@@ -330,6 +337,7 @@ int main(int argc, const char **argv) {
 	auto find_other_enums =
 	    ast_matchers::enumDecl(
 	        ast_matchers::isExpansionInMainFile(),
+			matchers::is_named(),
 	        ast_matchers::unless(ast_matchers::hasAnyName(enums)))
 	        .bind(enum_decl);
 

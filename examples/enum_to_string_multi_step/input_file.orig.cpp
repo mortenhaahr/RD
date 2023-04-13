@@ -21,6 +21,11 @@ namespace Desserts {
     };
 }
 
+// Unnamed enum left unchanged
+enum {
+	value
+};
+
 int main(){
 
 }

@@ -261,6 +261,11 @@ AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace,
 	}
 }
 
+/// Returns false if not named - e.g. unnamed enum
+AST_MATCHER(NamedDecl, is_named) {
+	return Node.getIdentifier(); // nullptr if no name
+}
+
 }	// namespace matchers
 
 int main(int argc, const char **argv) {
@@ -296,6 +301,7 @@ int main(int argc, const char **argv) {
 		enumDecl(
 			isExpansionInMainFile(),
 			has(enumConstantDecl(hasDeclContext(enumDecl().bind("enumDecl")))),
+			matchers::is_named(),
 			optionally(matchers::has_rec_decl_context(
 				hasDescendant(has_enum_to_string))))
 			.bind("enumDecl");

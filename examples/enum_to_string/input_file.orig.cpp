@@ -29,4 +29,9 @@ constexpr int to_string(N::S::Animals e){
 	return 0;
 }
 
+// Unnamed enum left unchanged
+enum {
+	value
+};
+
 int main() {}

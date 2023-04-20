@@ -5,3 +5,5 @@
 - Write something about how our techniques easily can be applied for static analysis as well
   - Instead of generating code simply report it e.g. as a warning
 - Write about the Clang AST and how it is different since it closely ressembles C++ code - see https://clang.llvm.org/docs/IntroductionToTheClangAST.html
+- Rename Tests to Results and provide results on running tools on existing code bases
+- Write about these deterministic tools compared to probabilistic tools (e.g. LLM)

@@ -14,8 +14,10 @@
 #include <iostream>
 #include <optional>
 #include <sstream>
+#include <type_traits>
 
 using namespace clang;
+using namespace clang::ast_matchers;
 
 #define append_file_line(arg) append_file_line_impl(arg, __FILE__, __LINE__)
 
@@ -151,20 +153,22 @@ namespace NodeOps {
 
 using resType = transformer::MatchConsumer<std::string>;
 
-template <
-	typename F,
-	// Enable if F is callable with const EnumDecl*, const EnumConstantDecl* and
-	// returns a string
-	typename = std::enable_if_t<std::is_same_v<
-		std::invoke_result_t<F &, const EnumDecl *, const EnumConstantDecl *>,
-		std::string>>>
+template <typename F,
+		  // Enable if F is callable with const
+		  // ast_matchers::MatchFinder::MatchResult&, const EnumDecl*, const
+		  // EnumConstantDecl* and returns a string
+		  typename = std::enable_if_t<std::is_same_v<
+			  std::invoke_result_t<
+				  F &, const ast_matchers::MatchFinder::MatchResult &,
+				  const EnumDecl *, const EnumConstantDecl *>,
+			  std::string>>>
 resType foreach_enum_const(StringRef Id, F callback) {
 	return [=](const ast_matchers::MatchFinder::MatchResult &Match)
 			   -> Expected<std::string> {
 		if (auto enum_decl = Match.Nodes.getNodeAs<EnumDecl>(Id)) {
 			std::stringstream ss;
 			for (const auto enum_const : enum_decl->enumerators()) {
-				ss << callback(enum_decl, enum_const);
+				ss << callback(Match, enum_decl, enum_const);
 			}
 			return ss.str();
 		}
@@ -174,49 +178,95 @@ resType foreach_enum_const(StringRef Id, F callback) {
 	};
 }
 
-resType case_enum_to_string(StringRef Id) {
-	auto lambda = [](const EnumDecl *enum_decl,
-					 const EnumConstantDecl *enum_const_decl) {
-		return "\t\tcase " + enum_decl->getNameAsString() +
-			   "::" + enum_const_decl->getNameAsString() + ": return \"" +
-			   enum_const_decl->getNameAsString() + "\";\n";
-	};
+resType case_enum_to_string(transformer::Stencil getName, StringRef Id) {
+	auto lambda =
+		[getName](const ast_matchers::MatchFinder::MatchResult &Match,
+					   const EnumDecl *enum_decl,
+					   const EnumConstantDecl *enum_const_decl) {
+			auto ns = getName->eval(Match);
+			if (!ns) {
+				throw std::invalid_argument(
+					append_file_line("Could get potential namespace"));
+			}
+			auto names = ns.get();
+			return "\t\tcase " + ns.get() +
+				   "::" + enum_const_decl->getNameAsString() + ": return \"" +
+				   enum_const_decl->getNameAsString() + "\";\n";
+		};
 	return foreach_enum_const(Id, lambda);
 }
 
-resType case_string_to_enum(StringRef Id) {
-	auto lambda = [](const EnumDecl *enum_decl,
-					 const EnumConstantDecl *enum_const_decl) {
-		return "\tif(str == \"" + enum_const_decl->getNameAsString() +
-			   "\")\n\t\treturn " + enum_decl->getNameAsString() +
-			   "::" + enum_const_decl->getNameAsString() + ";\n";
+resType get_declarator_type_text(StringRef Id) {
+	return [=](const ast_matchers::MatchFinder::MatchResult &Match)
+			   -> Expected<std::string> {
+		auto node = Match.Nodes.getNodeAs<DeclaratorDecl>(Id);
+		if (!node) {
+			throw std::invalid_argument(append_file_line(
+				"ID not bound or not DeclaratorDecl: " + Id.str()));
+		}
+		auto sourceRange =
+			node->getTypeSourceInfo()->getTypeLoc().getSourceRange();
+		auto tokenRange = CharSourceRange::getTokenRange(sourceRange);
+		auto sourceText = tooling::getText(tokenRange, *Match.Context).str();
+		return sourceText;
 	};
-	return foreach_enum_const<decltype(lambda)>(Id, lambda);
 }
 
 }	// end namespace NodeOps
 
-static std::optional<DynTypedNode>
-try_get_node(const ast_matchers::BoundNodes &Nodes, StringRef ID) {
-	auto &NodesMap = Nodes.getMap();
-	auto It = NodesMap.find(ID);
-	if (It == NodesMap.end())
-		return std::nullopt;
-	return It->second;
+namespace matchers {
+const DeclContext *recl_decl_context(const DeclContext *context) {
+	auto p = context->getParent();
+	if (p) {
+		recl_decl_context(p);
+	}
+	return context;
 }
 
-transformer::RangeSelector
-if_bound_range(std::string ID, transformer::RangeSelector true_eval,
-			   transformer::RangeSelector false_eval) {
-	return [=](const ast_matchers::MatchFinder::MatchResult &Result)
-			   -> Expected<CharSourceRange> {
-		std::optional<DynTypedNode> Node = try_get_node(Result.Nodes, ID);
-		if (Node.has_value()) {
-			return true_eval(Result);
+/// Warning: Use at own risk. Might match multiple types e.g. on record
+/// declarations. E.g. based on the example from the reference for
+/// `hasDeclContext` It matches twice on class D. Once on the declaration and
+/// once on the definition
+AST_MATCHER_P(Decl, has_rec_decl_context,
+			  clang::ast_matchers::internal::Matcher<Decl>, InnerMatcher) {
+	auto cur_ctx = Node.getDeclContext();
+	if (!cur_ctx) {
+		return false;
+	}
+	const DeclContext *nxt_ctx = nullptr;
+	while (true) {
+		nxt_ctx = cur_ctx->getParent();
+		if (!nxt_ctx) {
+			return InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx),
+										Finder, Builder);
 		}
-		return false_eval(Result);
-	};
+		cur_ctx = nxt_ctx;
+	}
 }
+
+AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace,
+			  clang::ast_matchers::internal::Matcher<NamespaceDecl>,
+			  InnerMatcher) {
+	auto ns = Node.getAsNamespace();
+	if (!ns) {
+		return false;
+	}
+	auto prefix = Node.getPrefix();
+	while (true) {
+		if (!prefix) {
+			return InnerMatcher.matches(*ns, Finder, Builder);
+		}
+		ns = prefix->getAsNamespace();
+		prefix = prefix->getPrefix();
+	}
+}
+
+/// Returns false if not named - e.g. unnamed enum
+AST_MATCHER(NamedDecl, is_named) {
+	return Node.getIdentifier(); // nullptr if no name
+}
+
+}	// namespace matchers
 
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
@@ -234,45 +284,47 @@ int main(int argc, const char **argv) {
 	EnumStringGeneratorTool tool(OptionsParser.getCompilations(),
 								 OptionsParser.getSourcePathList());
 
-	// TODO: Currently matches on e.g. void to_string(int). Fix so that it is
-	// void to_string(EnumType)
-	auto has_to_string =
-		ast_matchers::functionDecl(
-			ast_matchers::allOf(
-				ast_matchers::isExpansionInMainFile(),
-				ast_matchers::hasName("to_string"),
-				ast_matchers::hasParameter(
-					0, ast_matchers::hasType(ast_matchers::asString("int")))))
-			.bind("to_string");
+	// NOTE: We currently bind namespace - which turned out to be unnecessary but quite a learning experience
+	auto has_enum_to_string =
+		functionDecl(
+			allOf(hasName("to_string"),
+				  hasParameter(
+					  0, parmVarDecl(hasType(elaboratedType(
+							 namesType(hasDeclaration(
+								 enumDecl(equalsBoundNode("enumDecl")))),
+							 optionally(
+								 hasQualifier(matchers::rec_specifies_namespace(
+									 namespaceDecl().bind("namespace"))))))).bind("parmVar"))))
+			.bind("toString");
 
-	auto enumFinder = ast_matchers::enumDecl(
-						  ast_matchers::isExpansionInMainFile(),
-						  ast_matchers::optionally(ast_matchers::hasDeclContext(
-							  ast_matchers::hasDescendant(has_to_string))))
-						  .bind("enumDecl");
+	auto enumFinder =
+		enumDecl(
+			isExpansionInMainFile(),
+			has(enumConstantDecl(hasDeclContext(enumDecl().bind("enumDecl")))),
+			matchers::is_named(),
+			optionally(matchers::has_rec_decl_context(
+				hasDescendant(has_enum_to_string))))
+			.bind("enumDecl");
+
+	auto print_correct_name = transformer::ifBound("toString",	// if toString bound
+												   transformer::run(NodeOps::get_declarator_type_text(
+													   "parmVar")),	// Print name based on parmVar
+												   transformer::cat(transformer::name("enumDecl"))); // Print name based on enumDecl
 
 	auto findEnums = transformer::makeRule(
 		enumFinder,
 		{addInclude("string_view", transformer::IncludeFormat::Angled),
 		 addInclude("stdexcept", transformer::IncludeFormat::Angled),
 		 transformer::changeTo(
-			 if_bound_range("to_string", transformer::node("to_string"),
+			 transformer::ifBound("toString", transformer::node("toString"),
 							transformer::after(transformer::node("enumDecl"))),
 			 transformer::cat(
 				 // to_string method
 				 "\n\nconstexpr std::string_view to_string(",
-				 transformer::name("enumDecl"), " e){\n\tswitch(e) {\n",
-				 transformer::run(NodeOps::case_enum_to_string("enumDecl")),
-				 "\t}\n}"
-
-				 // to_enum method
-				 "\n\nconstexpr ",
-				 transformer::name("enumDecl"),
-				 " to_enum(const std::string_view& str, [[maybe_unused]] ",
-				 transformer::name("enumDecl"), " _ = {}){\n",
-				 transformer::run(NodeOps::case_string_to_enum("enumDecl")),
-				 "\n\tthrow std::invalid_argument(\"Not a valid enum of type ",
-				 transformer::name("enumDecl"), "\");\n}"))},
+				 print_correct_name,
+				 " e){\n\tswitch(e) {\n",
+				 transformer::run(NodeOps::case_enum_to_string(print_correct_name, "enumDecl")),
+				 "\t}\n}"))},
 		transformer::cat("Found something"));
 
 	ast_matchers::MatchFinder finder;

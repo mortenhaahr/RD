@@ -1,0 +1,152 @@
+\section{Simple rename refactoring tool} \label{sec:085tool:example:simple_rename}
+
+The goal of this tool is to rename all functions in the provided source code that has the name ``MkX'' into ``MakeX''. The tool should both rename the function declaration and the locations where it is called. The code in this section has been mostly stripped of the namespace specifiers in order to simplify the code.
+
+\subsubsection*{Command line parsing}
+
+In order to make this tool as simple as possible, the name of the method to rename and the new name have been fixed in the code. Therefore the Command line parsing element of the tool will use only the general options available for all LibTooling tools. The common command line options can be used by making a \cppinline{CommonOptionsParser}. The way to create such an object can be seen on \cref{code:080dev:common_cli_options}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+int main(int argc, const char* argv[]) {
+	auto ExpectedParser = CommonOptionsParser::create(argc, argv, llvm::cl::getGeneralCategory());
+	if (!ExpectedParser) {
+		// Fail gracefully for unsupported options.
+		llvm::errs() << ExpectedParser.takeError();
+		return 1;
+	}
+	CommonOptionsParser &OptionsParser = ExpectedParser.get();
+
+    return 0;
+}
+    \end{cppcode}
+    \caption{Example code which shows the creation of the \cppinline{CommonOptionsParser} used for all ClangTools.}
+    \label{code:080dev:common_cli_options}
+\end{listing}
+
+\subsubsection*{AST node matching}
+
+For this tool to work two different types of nodes need to be matched. First, the function declaration with the name ``MkX'' has to be matched, and then all expressions which call the method have to be matched. This can be achieved through the two matchers shown in \cref{code:080dev:match_functionDecl_with_name} and \cref{code:080dev:match_expr_call_to_funcDecl_with_name}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto functionNameMatcher = functionDecl(hasName("MkX")).bind("fun");
+    \end{cppcode}
+    \caption{This example shows a matcher that will match on any function declaration which has the name ``MkX''.}
+    \label{code:080dev:match_functionDecl_with_name}
+\end{listing}
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto invocations = declRefExpr(to(functionDecl(hasName("MkX"))));
+    \end{cppcode}
+    \caption{This example shows a matcher that will match on any expression which calls to a function declaration with the name ``MkX''.}
+    \label{code:080dev:match_expr_call_to_funcDecl_with_name}
+\end{listing}
+
+\subsubsection*{Node data processing}
+
+In this tool, the act of processing the nodes is simple, as the tool just has to rename the method and all the locations where it is called. This is a native part of the rules API as described earlier (\cref{subsec:080dev:NodeDataProcessing}). 
+
+The two renaming rules can be seen on \cref{code:080dev:tool_example:rename:function} and \cref{code:080dev:tool_example:rename:invocation}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto renameFunctionRule = makeRule(
+        functionNameMatcher,
+        changeTo(name("fun"), cat("MakeX")));
+    \end{cppcode}
+    \caption{The rename function rule used in the example. The rule consists of the functionNameMatcher as specified in \cref{code:080dev:match_functionDecl_with_name} and the renaming action. In this case, the action is to change the name of the bound method to ``MakeX''.}
+    \label{code:080dev:tool_example:rename:function}
+\end{listing}
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto renameInvocationsRule = makeRule(
+    invocations, changeTo(cat("MakeX")))
+    \end{cppcode}
+    \caption{The rename invocations rule which updates the invocations to the renamed method. Here the entire expresion is changed to the new method name.}
+    \label{code:080dev:tool_example:rename:invocation}
+\end{listing}
+
+The two rules specified here are closely coupled as running just one of the rules would result in invalid source code. There is a way to group rules into a single rule and it is called \cppinline{applyFirst}. This method creates a set of rules and applies the first rule that matches a given node. That means that there is an ordering to \cppinline{applyFirst}. This ordering can be ignored for independent rules, like the two specified in this section, and in that case, it will simply create a disjunction between the rules. The combined rule can be seen on \cref{code:080dev:tool_example:rename:both}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto renameFunctionAndInvocations = applyFirst({renameFunctionRule, renameInvocationsRule});
+    \end{cppcode}
+    \caption{A rule that both renames the function declaration and the invocations of that function.}
+    \label{code:080dev:tool_example:rename:both}
+\end{listing}
+
+The rules required for the simple renaming tool have been specified, but in order to extract the source code changes specified by the rules they have to be coupled with a transformer. The transformer is described in detail in \cref{sec:080dev:tool_structure}.
+
+The transformer needs a consumer that saves the generated source code edits to an external variable. The consumer callback receives an expected array of \cppinline{AtomicChange} objects which in turn contain the \cppinline{Replacements} in the actual source code. The consumer shown in \cref{code:080dev:tool_example:consumer} extracts the \cppinline{Replacements} from the \cppinline{AtomicChange}s and saves them in a map variable that is defined externally.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto consumer(std::map<std::string, Replacements> fileReplacements) {
+    return [=](Expected<TransformerResult<void>> Result) {
+        if (not Result) {
+            throw "Error generating changes: " + toString(Result.takeError());
+        }
+        for (const AtomicChange &change : Result.get().Changes) {
+            std::string &filePath = change.getFilePath();
+            for (const Replacement &replacement : change.getReplacements()) {
+                Error err = fileReplacements[filePath].add(replacement);
+
+                if (err) {
+                    throw "Failed to apply changes in " + filePath + "! " + toString(std::move(err));
+                }
+            }
+        }
+    };
+}
+    \end{cppcode}
+    \caption{A transformer consumer that saves all the generated source code edits to an external map by filename.}
+    \label{code:080dev:tool_example:consumer}
+\end{listing}
+
+The consumer and the rules can be used to create the transformer as shown in \cref{code:080dev:tool_example:transformer}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+Transformer transformer(renameFunctionAndInvocations, consumer(externalFilesToReplaceMap));
+    \end{cppcode}
+    \caption{A rule that both renames the function declaration and the invocations of that function. The externalFilesToReplaceMap variable passed to the consumer will be discussed later.}
+    \label{code:080dev:tool_example:transformer}
+\end{listing}
+
+\subsubsection*{Handling the results}
+
+This part of the tool is responsible for the creation of the actual tool and saving the results to disk. 
+
+The goal of this tool is a form of refactoring and Clang already has a tool for refactoring called clang-refactor. This tool is also created through LibTooling and it defines a class called \cppinline{RefactoringTool} which extends the \cppinline{ClangTool} class. The \cppinline{RefactoringTool} adds a way to save \cppinline{Replacements} to disk. The changes that should be saved to disk are located in a \cppinline{std::map<std::string, Replacements>} map which is contained inside of the \cppinline{RefactoringTool}. The \cppinline{RefactoringTool} implementation already contains all the needed functionality to finish the rename refactoring tool. All that remains is therefore to create the tool and invoke it, which is shown in \cref{code:080dev:tool_example:tool_invocation}.
+
+
+\begin{listing}[H]
+    \begin{cppcode}
+int main(int argc, const char* argv[]) {
+// CL parsing
+...
+
+RefactoringTool Tool(OptionsParser.getCompilations(),
+                     OptionsParser.getSourcePathList());
+auto &externalFilesToReplaceMap = Tool.getReplacements();
+
+// transformer creation
+...
+
+//Register the transformation matchers to the match finder
+MatchFinder Finder;
+transformer.registerMatchers(&finder);
+
+//Run the tool and save the result to disk.
+return Tool.runAndSave(newFrontendActionFactory(&finder).get());
+} // end main
+    \end{cppcode}
+    \caption{This code snippet shows the creation of a \cppinline{RefactoringTool} called `Tool'. The construction of the tool requires the source code that was passed through the command line. The internal map in the Tool is used as input to the transformer, as seen in \cref{code:080dev:tool_example:transformer}.}
+    \label{code:080dev:tool_example:tool_invocation}
+\end{listing}
+
+As can be seen in \cref{code:080dev:tool_example:tool_invocation} the tool combines the results from the other parts of the tool structure into the final tool. The tool is then invocated by the \cppinline{runAndSave} method call, which invokes the tool and saves the results to disk afterwards. 

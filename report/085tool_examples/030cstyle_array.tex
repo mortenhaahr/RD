@@ -1,0 +1,35 @@
+
+\section{CStyle array converter}
+
+The goal of this tool is to find all the raw CStyle arrays in C++ code and convert them into \cppinline{std::array}s. This change provides more type information to the compiler without changing the intent of the code.
+
+One of the test cases for this tool is to convert \cppinline{static const int *const_pointer_array_static[2]} into \cppinline{static std::array<const int*>, 2> const_pointer_array_static}. In order to achieve this, the storage class and qualifier of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
+
+\subsubsection*{Command line parsing}
+
+Like the renaming tool \cref{sec:085tool:example:simple_rename} the customization of the command line arguments for this tool has been left out in order to cut down on complexity.
+
+\subsubsection*{AST node matching}
+
+This tool works on CStyle arrays with a constant size so the AST matcher for that type of node must be identified.
+
+A CStyle array is a type and multiple matchers which match on different variants of CStyle arrays are provided by Clang. The types of CStyle arrays are: \cppinline{Array}, \cppinline{Constant}, \cppinline{DependentSized}, \cppinline{Incomplete} and \cppinline{Variable}. \\
+The \cppinline{Array} type is a base type for all the other types of CStyle arrays. The \cppinline{Constant} arry type is a CStyle array with a constant size. The \cppinline{DependentSized} array is an array with a value dependent size. The \cppinline{Incomplete} array is a CStyle array with an unspecified size. The \cppinline{Variable} array type is a CStyle array wit ha specified size that is not an integer constant expression.
+
+Each of the types have a corrosponding matcher which allows the creator of a tool to match only the wanted types of CStyle arrays. The focus of this tool is solely \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
+
+% TODO: Write about how to get the storage class, the decl type chosen. Also describe why the typeLoc is nescesary. Show the matcher.
+
+% TODO: CStyle arrays as parameters to methods. Describe the custom matcher.
+
+
+\subsubsection*{Node data processing}
+
+% TODO: Explain how information is extracted from the bound nodes in both matchers. Show the rules.
+
+% TODO: Somewhere the difficulties of narrowing down the nodes and selecting the correct ones must be discussed.
+
+% TODO: Write about the semantic breaking this tool does whith the CStyle parameters, because they decay into pointers.
+\subsubsection*{Handling the results}
+
+% Keep short as it is mostly identical to the previous tool. Ignore that the implementation of the tool is custom, as it did not have to be.

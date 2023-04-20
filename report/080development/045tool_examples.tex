@@ -176,7 +176,11 @@ The \cppinline{Array} type is a base type for all the other types of CStyle arra
 
 Each of the types have a corrosponding matcher which allows the creator of a tool to match only the wanted types of CStyle arrays. The focus of this tool is solely \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
 
+The type of the node which has to be bound has been identified but more information is needed in order to create the wanted behaviour. 
+
 % TODO: Write about how to get the storage class, the decl type chosen. Also describe why the typeLoc is nescesary. Show the matcher.
+
+
 
 % TODO: CStyle arrays as parameters to methods. Describe the custom matcher.
 

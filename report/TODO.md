@@ -7,3 +7,20 @@
 - Write about the Clang AST and how it is different since it closely ressembles C++ code - see https://clang.llvm.org/docs/IntroductionToTheClangAST.html
 - Rename Tests to Results and provide results on running tools on existing code bases
 - Write about these deterministic tools compared to probabilistic tools (e.g. LLM)
+- We forgot to consider following scenario:
+
+```cpp
+enum class Desserts {
+  Cake
+};
+void to_string(Desserts e){
+
+}
+namespace ns {
+  void to_string(Desserts e){
+
+  }
+}
+```
+  - Mikkel's tool will overwrite both methods
+  - Morten's tool will overwrite the first occasion (global namespace to_string)

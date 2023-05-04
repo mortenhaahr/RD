@@ -88,8 +88,7 @@ for enum_decl in source_files:
     \label{code:085tool:pseudo_enum1}
 \end{listing}
 
-An alternative implementation of the tool can be seen in \cref{code:085tool:pseudo_enum2}, which follows a multi-step procedure. The first step consists of updating the existing \cppinline{to_string} functions and saving the relevant enum type in a collection (\textinline{parameters}). The second step consists of finding all the enum declarations % TODO: Finish this and pseudo below. Find all enumdecls and generate the missing ones
-
+An alternative implementation of the tool can be seen in \cref{code:085tool:pseudo_enum2}, which follows a multi-step procedure. The first step consists of updating the existing \cppinline{to_string} functions and saving the relevant enum type in a collection (\textinline{parameters}). The second step consists of finding all the enum declarations and generating the \cppinline{to_string} functions that were not updated in step 1.
 
 \begin{listing}[H]
     \begin{pythoncode}
@@ -105,6 +104,10 @@ for enum_decl in source_files:
     \caption{Pseudocode for the enum to string tool.}
     \label{code:085tool:pseudo_enum2}
 \end{listing}
+
+A third way of implementing the tool can be seen in \cref{code:085tool:pseudo_enum3}, which is also a multi-step procedure. The first step consists of identifying the existing \cppinline{to_string} functions. The second step consists of finding all the enum declarations. If the declaration already has a \cppinline{to_string} function then it is updated. Otherwise, it is generated.
+
+The main difference between the second and the third implementation is regarding semantics. It might be simpler to divide the tool into two distinct phases consisting of a data collection phase a post-processing phase, where the post-processing performs the actual logic of the tool. This type of structuring is the premise of the helper library divided by Bloomberg \cite{ClangmetatoolFrameworkReusing2023}.
 
 \begin{listing}[H]
     \begin{pythoncode}
@@ -122,8 +125,6 @@ for enum_decl in source_files:
     \label{code:085tool:pseudo_enum3}
 \end{listing}
 
+During the project, the tool was implemented with the algorithms seen in \cref{code:085tool:pseudo_enum1} and \cref{code:085tool:pseudo_enum2}. The algorithm from \cref{code:085tool:pseudo_enum3} was considered but was not implemented.
 
-There are multiple approaches to writing the tool described above. One approach could be for the tool to be implemented in a single step, similarly to how it was done in \cref{sec:045tool:c_style_array}. Another approach could be to divide the tool into smaller tools that execute in sequence
-
-The project consisted of developing two seperate implementations of the enum to string tool. The first one, that is described in this section, consists of implementing all the
-
+The following sections describe the two ``enum to string'' tools that were implemented. 

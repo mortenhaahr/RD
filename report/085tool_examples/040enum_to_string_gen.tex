@@ -107,7 +107,7 @@ for enum_decl in source_files:
 
 A third way of implementing the tool can be seen in \cref{code:085tool:pseudo_enum3}, which is also a multi-step procedure. The first step consists of identifying the existing \cppinline{to_string} functions. The second step consists of finding all the enum declarations. If the declaration already has a \cppinline{to_string} function then it is updated. Otherwise, it is generated.
 
-The main difference between the second and the third implementation is regarding semantics. It might be simpler to divide the tool into two distinct phases consisting of a data collection phase and a post-processing phase, where the post-processing performs the actual logic of the tool. This type of structuring is the premise of the helper library provided by Bloomberg \cite{ClangmetatoolFrameworkReusing2023}.
+The main difference between the second and the third implementation is regarding semantics. It might be simpler to divide the tool into two distinct phases consisting of a data collection phase and a post-processing phase, where the post-processing performs the actual logic of the tool. This appears to be a common division of responsibilities and is among others used in the a helper library that was written by Bloomberg \cite{ClangmetatoolFrameworkReusing2023}.
 
 \begin{listing}[H]
     \begin{pythoncode}
@@ -125,6 +125,10 @@ for enum_decl in source_files:
     \label{code:085tool:pseudo_enum3}
 \end{listing}
 
-During the project, the tool was implemented with the algorithms seen in \cref{code:085tool:pseudo_enum1} and \cref{code:085tool:pseudo_enum2}. The algorithm from \cref{code:085tool:pseudo_enum3} was considered but was not implemented.
+% Maybe todo: I am not entirely happy with the paragraph below. I don't feel like I am getting my point across
+The two designs from \cref{code:085tool:pseudo_enum2} and \cref{code:085tool:pseudo_enum3} have the benefit of being more modular than the one in \ref{code:085tool:pseudo_enum1} since they implement the tool behaviour in multiple steps.
+Each step in the designs can essentially be considered independent tools that are chained together. This makes it easier to reuse the tools in other projects and makes it easier to test during development. For instance in \cref{code:085tool:pseudo_enum2}, the first for-loop can be considered a tool that identifies existing enum-to-string functions, logs them and updates them, and the second for-loop can be considered a tool that generates enum-to-string functions if they are not in the log.
+
+During the project, the tool was implemented with the designss seen in \cref{code:085tool:pseudo_enum1} and \cref{code:085tool:pseudo_enum2}. The design from \cref{code:085tool:pseudo_enum3} was considered but was not implemented.
 
 The following sections describe the two ``enum-to-string'' tools that were implemented.

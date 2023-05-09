@@ -172,11 +172,13 @@ auto CStyleArrayConverterRule = makeRule(
     \label{code:085tool_ex:Rule}
 \end{listing}
 
-As it can be seen from \cref{code:085tool_ex:Rule}, the refactoring is relatively simple to read, as it solely uses the methods created through this section and strings of text. This makes each line easy to reason about and transparent. The difference between node processing step for the CStyleConverter tool as compared to the RenamingTool, is that more information has to be extracted from the bound nodes. This requires a deeper understanding of which node types contain the wanted information, and how the information is encoded in the nodes.
+As it can be seen from \cref{code:085tool_ex:Rule}, the refactoring rule is relatively simple to read, as it solely uses the methods created through this section and strings of text, which is very descriptive. This makes each line easy to reason about and transparent. The difference between node processing step for the CStyleConverter tool as compared to the RenamingTool, is that more information has to be extracted from the bound nodes. This requires a deeper understanding of which node types contain the wanted information, and how the information is encoded in the nodes.
 
 % TODO: Explain how information is extracted from the bound nodes in both matchers. Show the rules.
 
+
 % TODO: Somewhere the difficulties of narrowing down the nodes and selecting the correct ones must be discussed.
+
 
 % TODO: Write about the semantic breaking this tool does whith the CStyle parameters, because they decay into pointers.
 \subsection{Handling the results}

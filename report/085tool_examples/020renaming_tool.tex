@@ -2,7 +2,7 @@
 
 The goal of this tool is to rename all functions in the provided source code that has the name ``MkX'' into ``MakeX''. The tool should both rename the function declaration and the locations where it is called. The code in this section has been mostly stripped of the namespace specifiers in order to simplify the code.
 
-\subsubsection*{Command line parsing}
+\subsection{Command line parsing}
 
 In order to make this tool as simple as possible, the name of the method to rename and the new name have been fixed in the code. Therefore the Command line parsing element of the tool will use only the general options available for all LibTooling tools. The common command line options can be used by making a \cppinline{CommonOptionsParser}. The way to create such an object can be seen on \cref{code:080dev:common_cli_options}.
 
@@ -24,7 +24,7 @@ int main(int argc, const char* argv[]) {
     \label{code:080dev:common_cli_options}
 \end{listing}
 
-\subsubsection*{AST node matching}
+\subsection{AST node matching}
 
 For this tool to work two different types of nodes need to be matched. First, the function declaration with the name ``MkX'' has to be matched, and then all expressions which call the method have to be matched. This can be achieved through the two matchers shown in \cref{code:080dev:match_functionDecl_with_name} and \cref{code:080dev:match_expr_call_to_funcDecl_with_name}.
 
@@ -44,7 +44,7 @@ auto invocations = declRefExpr(to(functionDecl(hasName("MkX"))));
     \label{code:080dev:match_expr_call_to_funcDecl_with_name}
 \end{listing}
 
-\subsubsection*{Node data processing}
+\subsection{Node data processing}
 
 In this tool, the act of processing the nodes is simple, as the tool just has to rename the method and all the locations where it is called. This is a native part of the rules API as described earlier (\cref{subsec:080dev:NodeDataProcessing}). 
 
@@ -117,7 +117,7 @@ Transformer transformer(renameFunctionAndInvocations, consumer(externalFilesToRe
     \label{code:080dev:tool_example:transformer}
 \end{listing}
 
-\subsubsection*{Handling the results}
+\subsection{Handling the results}
 
 This part of the tool is responsible for the creation of the actual tool and saving the results to disk. 
 

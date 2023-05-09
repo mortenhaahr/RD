@@ -3,33 +3,182 @@
 
 The goal of this tool is to find all the raw CStyle arrays in C++ code and convert them into \cppinline{std::array}s. This change provides more type information to the compiler without changing the intent of the code.
 
-One of the test cases for this tool is to convert \cppinline{static const int *const_pointer_array_static[2]} into \cppinline{static std::array<const int*>, 2> const_pointer_array_static}. In order to achieve this, the storage class and qualifier of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
+One of the test cases for this tool is to convert \cppinline{static const int* const const_pointer_const_array_static[2]} into \cppinline{static std::array<const int* const>, 2> const_pointer_const_array_static}. In order to achieve this, the storage class and qualifier of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
 
-\subsubsection*{Command line parsing}
+\subsection{Command line parsing}
 
 Like the renaming tool \cref{sec:085tool:example:simple_rename} the customization of the command line arguments for this tool has been left out in order to cut down on complexity.
 
-\subsubsection*{AST node matching}
+\subsection{AST node matching}
 
 This tool works on CStyle arrays with a constant size so the AST matcher for that type of node must be identified.
 
 A CStyle array is a type and multiple matchers which match on different variants of CStyle arrays are provided by Clang. The types of CStyle arrays are: \cppinline{Array}, \cppinline{Constant}, \cppinline{DependentSized}, \cppinline{Incomplete} and \cppinline{Variable}. \\
 The \cppinline{Array} type is a base type for all the other types of CStyle arrays. The \cppinline{Constant} arry type is a CStyle array with a constant size. The \cppinline{DependentSized} array is an array with a value dependent size. The \cppinline{Incomplete} array is a CStyle array with an unspecified size. The \cppinline{Variable} array type is a CStyle array wit ha specified size that is not an integer constant expression.
 
-Each of the types have a corrosponding matcher which allows the creator of a tool to match only the wanted types of CStyle arrays. The focus of this tool is solely \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
+Each of the types have a corrosponding matcher which allows the creator of a tool to match only the wanted types of CStyle arrays. The focus of this tool is solely on \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
 
-% TODO: Write about how to get the storage class, the decl type chosen. Also describe why the typeLoc is nescesary. Show the matcher.
+The constant array type node contains the element type of the array as well as the amount of elements. The constant array type node does not contain the storage specifier for the type (E.G. static or extern) so that information must be bound in another way. The storage specifier is stored in the declaration of the array which is a \cppinline{VarDecl}. For this tool the  The bound declaration will also make it easy to access the qualifiers for the CStyle array. 
+
+There is a problem however, as this tool also aims to refactor the raw CStyle arrays declared inside of classes. This destinction matters for the declaration of the variables, as variables inside classes are \cppinline{FieldDecl}s and not \cppinline{VarDecl}s. For this matcher the type of node to match must therefore be more generic than the \cppinline{VarDecl}. This can be acchieved by using the \cppinline{DeclaratorDecl} matcher which matches on \cppinline{DeclaratorDecl}s, which is the common baseclass between \cppinline{VarDecl}s and \cppinline{FieldDecl}s.
+
+The variable declaration for the arrays also contain the bounded location of the declaration in the source code. This can be easily extracted through the \cppinline{typeLoc} matcher. This information will make it easier to change the correct location in the source code in the following steps and is therefore pressent in the matcher.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto ConstArrayFinder = 
+    declaratorDecl(
+        isExpansionInMainFile(),
+        hasType(constantArrayType().bind("array")),
+        hasTypeLoc(typeLoc().bind("arrayLoc")))
+    .bind("arrayDecl");
+    \end{cppcode}
+    \caption{CStyle array matcher with bindings.}
+    \label{code:085tool_ex:CSMatcher}
+\end{listing}
+
 
 % TODO: CStyle arrays as parameters to methods. Describe the custom matcher.
 
+\subsection{Node data processing}
 
-\subsubsection*{Node data processing}
+In this section, the relevant data from the bound nodes will be extracted and used to generate source-code changes. The Stencil and Transformer libraries will be used for the data extraction and code refactoring.
+As described in the previous section, there are multiple pieces of information which needs to be extracted from the nodes. 
+
+From \cref{code:085tool_ex:CSMatcher} three node types were bound. ``array'' is the type of constant array that was found, ``arrayLoc'' is the location of the constant array in the source code and ``arrayDecl'' is the entire declartion of the array.
+
+As shown in the introduction to this section, a test case for this tool is to convert \cppinline{static const int* const ID[2]} into \cppinline{static std::array<const int* const, 2> ID}.
+
+\subsubsection*{RangeSelector}
+The first thing needed in order to make the change is to extract the source code range from the nodes. The ``arrayLoc'' node, which has been bound, is a type location which spans the \cppinline{[2]} part of the CStyle array. This can be used in conjunction with the ``arrayDecl'' node in order to get the entire source code range for the array declaration. The \cppinline{RangeSelector} api has a convenience method \cppinline{encloseNodes} which is meant for exactly this purpose.
+
+\subsubsection*{StorageClass}
+Now that the correct source code range has been found, it is time to populate it with the correct information. As specified earlier the storage specifier for the decalaration must be kept and it can be found through the \cppinline{getStorageClass} method on VarDecl nodes. This method is not precent in FieldDecl nodes because they don't have storage specifiers. static FieldDecls inside classes are converted to VarDecls during the AST generation, as these variables have no knowledge of the individual class instances. 
+
+The \cppinline{getStorageClass} method can be implemented as a \cppinline{MatchConsumer<std::string>} which will make it easy to use the method to make source-code refactoring (see \cref{sec:080dev:tool_structure}). A implementation of such a method can be seen on \cref{code:085tool_ex:VarStorageString}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto getVarStorage(StringRef Id) {
+    return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
+        if (auto var = Match.Nodes.getNodeAs<VarDecl>(Id)) {
+            auto storage_class = var->getStorageClass();
+            if (storage_class != StorageClass::SC_None) {
+               return std::string(VarDecl::getStorageClassSpecifierString(storage_class)) + " ";
+            }
+        }
+
+        return "";
+    };
+}
+    \end{cppcode}
+    \caption{Method to extract the storage specifier string from a VarDecl node bound to Id.}
+    \label{code:085tool_ex:VarStorageString}
+\end{listing}
+
+\subsubsection*{Array element type}
+
+The array element type is stored inside the \cppinline{ConstantArrayType} node. It can be accessed through the \cppinline{getElementType} method call. Like the storage class specifier on \cref{code:085tool_ex:VarStorageString} the easiest way to work with the element type for this tool is through the Stencil library. The getArrayElementType method will therefore be implemented as a MatchConsumer. The implementation of the method can be seen on \cref{ArrayElemtType}. 
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto getArrayElementType(StringRef Id) {
+    return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
+        if (auto array = Match.Nodes.getNodeAs<ArrayType>(Id)) {
+            return array->getElementType().getAsString();
+        }
+
+        throw std::runtime_error(
+			    append_file_line("ID not bound or not ArrayType: " + Id.str()));
+    };
+}
+    \end{cppcode}
+    \caption{Method to extract the element type from the ConstantArrayType node.}
+    \label{code:085tool_ex:ArrayElemtType}
+\end{listing}
+
+\subsubsection*{Array size}
+
+The size of the array can also, like the array element type, be extracted through the ConstantArrayType node. The implementation of the extraction method can be seen on \cref{code:085tool_ex:ConstArraySize}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto getConstArraySize(StringRef Id) {
+    return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
+        if (auto array = Match.Nodes.getNodeAs<ConstantArrayType>(Id)) {
+            auto size = array->getSize().getZExtValue();
+            std::stringstream ss;
+            ss << size;
+            return ss.str();
+        }
+
+        throw std::runtime_error(
+			    append_file_line("ID not bound or not ConstantArrayType: " + Id.str()));
+    };
+}
+    \end{cppcode}
+    \caption{Method to extract the element size from the ConstantArrayType node. The array size is a llvm::APInt and must be converted to a `normal' int through the \cppinline{getZExtValue} mehtod.}
+    \label{code:085tool_ex:ConstArraySize}
+\end{listing}
+
+\subsubsection*{Declaration qualifiers}
+
+The last piece of the puzzle is to keep the qualifiers of the declaration. The qualifiers are the explicit namespaces in front of the name of the declaration. E.G  \cppinline{uint8_t my_namespace::array[5];} has the qualifiers \cppinline{my_namespace::}, while \cppinline{uint8_t array[4];} has no qualifiers. These qualifiers are part of the declaration and the easiest way to extract them is to copy the literal text in the source code. The literal source code of declartions can be extracted through the source range of the node. \cref{code:085tool_ex:DeclaratorQualif} shows how the qualifiers of a \cppinline{DeclaratorDecl} can be extracted from the source-code.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto getDeclQualifier(StringRef Id) {
+    return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
+        if (auto decl = Match.Nodes.getNodeAs<DeclaratorDecl>(Id)) {
+            CharSourceRange qualifierRange = CharSourceRange::getTokenRange(decl->getQualifierLoc().getSourceRange());
+            return getText(qualifierRange, *Match.Context).str();
+        }
+
+        throw std::runtime_error(
+			    append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
+    };
+}
+    \end{cppcode}
+    \caption{Method to extract the qualifiers from the source code range of a DeclaratorDecl node.}
+    \label{code:085tool_ex:DeclaratorQualif}
+\end{listing}
+
+\subsubsection*{Creating the transformation rule}
+
+With all the relevant information extracted from the bound nodes, a transformation rule can be made to create the wanted source-code refactoring. The code for the rule can be found on \cref{code:085tool_ex:Rule}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto CStyleArrayConverterRule = makeRule(
+    ConstArrayFinder,
+    {
+        addInclude("array",
+        IncludeFormat::Angled),
+        changeTo(
+            encloseNodes("arrayDecl", "arrayLoc"),
+            cat(run(getVarStorage("arrayDecl")),
+                "std::array<",
+                run(getArrayElementType("array")),
+                ", ",
+                run(getConstArraySize("array")),
+                "> ",
+                run(getDeclQualifier("arrayDecl")),
+                name("arrayDecl")
+            )
+        )
+    });
+    \end{cppcode}
+    \caption{The entire rule for generating the wanted \cppinline{std::array} declaration. The rule both adds the \cppinline{<array>} header and makes the source-code refactoring in one step.}
+    \label{code:085tool_ex:Rule}
+\end{listing}
+
+As it can be seen from \cref{code:085tool_ex:Rule}, the refactoring is relatively simple to read, as it solely uses the methods created through this section and strings of text. This makes each line easy to reason about and transparent. The difference between node processing step for the CStyleConverter tool as compared to the RenamingTool, is that more information has to be extracted from the bound nodes. This requires a deeper understanding of which node types contain the wanted information, and how the information is encoded in the nodes.
 
 % TODO: Explain how information is extracted from the bound nodes in both matchers. Show the rules.
 
 % TODO: Somewhere the difficulties of narrowing down the nodes and selecting the correct ones must be discussed.
 
 % TODO: Write about the semantic breaking this tool does whith the CStyle parameters, because they decay into pointers.
-\subsubsection*{Handling the results}
+\subsection{Handling the results}
 
 % Keep short as it is mostly identical to the previous tool. Ignore that the implementation of the tool is custom, as it did not have to be.

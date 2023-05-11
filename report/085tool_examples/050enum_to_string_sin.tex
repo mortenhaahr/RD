@@ -45,8 +45,8 @@ The AST node matching was by far the most challenging part of developing this to
 \vspace*{-0.75em}
 \begin{enumerate}
     \item Find and bind enum declaration
-    \item Go to outermost namespace
-    \item Recursively traverse the namespaces to potentially find a matching \cppinline{to_string} function
+    \item Find the outermost namespace
+    \item Recursively traverse the namespace to potentially find a matching \cppinline{to_string} function
 \end{enumerate}
 
 The behaviour described above is a quite complex compared to the previous tools and required the implementation of custom matchers that worked recursively, something that the builtin matchers do not support.
@@ -99,6 +99,38 @@ AST_MATCHER(NamedDecl, is_named) {
     \label{code:085tool:sin_is_named}
 \end{listing}
 
+\subsubsection*{Finding the outermost namespace}
+In order to potentially find the \cppinline{to_string} method matching the \cppinline{EnumDecl}, one most consider that the function might be placed inside a different namespace than the \cppinline{EnumDecl}.
+For that reason, it is necessary to to consider all the namespaces inside the compilation unit when searching.
+The implementation for such a matcher is somewhat similar to the implemention of the builtin \cppinline{hasDeclContext} that was used in \cref{code:085tool:sin_enum_finder}. 
+The behaviour of \cppinline{hasDeclContext} is to return false, if the declaration does not have a \cppinline{DeclContext}\footnote{
+    An example of a case of a \cppinline{Decl} that does not have \cppinline{DeclContext} is the outermost \cppinline{TranslationUnitDecl}.
+}, otherwise return the result of evaluating the \cppinline{InnerMatcher} on the context casted to a \cppinline{Decl}.\\
+The behaviour for the recursive version (\cppinline{has_rec_decl_context}) is similar, but instead of evaluating to the immediate parent context, it is evaluated to the outermost context. The implementation can be seen in \cref{code:085tool:sin_rec_decl}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+AST_MATCHER_P(Decl, has_rec_decl_context, Matcher<Decl>, InnerMatcher) {
+	auto cur_ctx = Node.getDeclContext();
+	if (!cur_ctx) {
+		return false;
+	}
+	const DeclContext *nxt_ctx = nullptr;
+	while (true) {
+		nxt_ctx = cur_ctx->getParent();
+		if (!nxt_ctx) {
+			return InnerMatcher.matches(*Decl::castFromDeclContext(cur_ctx), Finder, Builder);
+		}
+		cur_ctx = nxt_ctx;
+	}
+}
+    \end{cppcode}
+    \caption{Custom matcher for finding the outermost context of an AST node.}
+    \label{code:085tool:sin_rec_decl}
+\end{listing}
+
+\subsubsection*{Finding the namespace in code}
+Related to discussion in 6.3.3
 
 \subsection{Node data processing}
 

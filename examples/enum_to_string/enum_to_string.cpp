@@ -222,13 +222,6 @@ resType get_declarator_type_text(StringRef Id) {
 }	// end namespace NodeOps
 
 namespace matchers {
-const DeclContext *recl_decl_context(const DeclContext *context) {
-	auto p = context->getParent();
-	if (p) {
-		recl_decl_context(p);
-	}
-	return context;
-}
 
 /// Warning: Use at own risk. Might match multiple types e.g. on record
 /// declarations. E.g. based on the example from the reference for
@@ -293,14 +286,15 @@ int main(int argc, const char **argv) {
 	// NOTE: We currently bind namespace - which turned out to be unnecessary but quite a learning experience
 	auto has_enum_to_string =
 		functionDecl(
-			allOf(hasName("to_string"),
+			hasName("to_string"),
+			      parameterCountIs(1),
 				  hasParameter(
 					  0, parmVarDecl(hasType(elaboratedType(
 							 namesType(hasDeclaration(
-								 enumDecl(equalsBoundNode("enumDecl")))),
+								 equalsBoundNode("enumDecl"))),
 							 optionally(
 								 hasQualifier(matchers::rec_specifies_namespace(
-									 namespaceDecl().bind("namespace"))))))).bind("parmVar"))))
+									 namespaceDecl().bind("namespace"))))))).bind("parmVar")))
 			.bind("toString");
 
 	auto enumFinder =
@@ -315,7 +309,6 @@ int main(int argc, const char **argv) {
 												   transformer::run(NodeOps::get_declarator_type_text(
 													   "parmVar")),	// Print name based on parmVar
 												   transformer::cat(transformer::name("enumDecl"))); // Print name based on enumDecl
-
 	auto findEnums = transformer::makeRule(
 		enumFinder,
 		{addInclude("string_view", transformer::IncludeFormat::Angled),

@@ -309,8 +309,7 @@ int main(int argc, const char **argv) {
 			has(enumConstantDecl(hasDeclContext(enumDecl().bind("enumDecl")))),
 			matchers::is_named(),
 			optionally(matchers::has_rec_decl_context(
-				hasDescendant(has_enum_to_string))))
-			.bind("enumDecl");
+				hasDescendant(has_enum_to_string))));
 
 	auto print_correct_name = transformer::ifBound("toString",	// if toString bound
 												   transformer::run(NodeOps::get_declarator_type_text(

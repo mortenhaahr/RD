@@ -1,7 +1,39 @@
-\section{Enum to string -- single step}
-The following section describes the enum-to-string tool where the 
+\section{Enum-to-string -- single step}
+The following section describes the enum-to-string tool where the entire tool is implemented as a single \cppinline{ClangTool}.
 
 \subsection{Command line parsing}
+Most of the command line parsing was done in a similar manner as in \cref{sec:085tool:example:simple_rename}. However, the behaviour was extended with the introduction of some new command line options for the user to specify.
+The command-line option ``in\_place'' was introduced, allowing the user to have the filechanges be written to the terminal instead of directly to the file.
+The other option ``debug\_info'' makes the tool print extra debug information to the console.
+
+The additional options were easily introduced as booleans options through the LLVM command line API, as seen in \cref{code:085tool:sin_cl_options}. One simply needs to specify a description and add it to the \cppinline{OptionCategory} -- which is \cppinline{MyToolCategory} in this case.
+
+\begin{listing}[H]
+    \begin{cppcode}
+static llvm::cl::opt<bool> Inplace(
+    "in_place",
+    llvm::cl::desc("Inplace edit <file>s, if specified. If not specified the "
+                   "generated code will be printed to cout."),
+    llvm::cl::cat(MyToolCategory));
+static llvm::cl::opt<bool> DebugMsgs(
+    "debug_info", llvm::cl::desc("Print debug information to cout."),
+    llvm::cl::cat(MyToolCategory));
+    \end{cppcode}
+    \caption{Implementation of the newly introduced command line options.}
+    \label{code:085tool:sin_cl_options}
+\end{listing}
+
+The options can then be used as normal booleans throughout the implementation, as seen in \cref{code:085tool:sin_cl_in_place}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+if (!Inplace) {
+    llvm::outs() << new_code.get();
+}
+    \end{cppcode}
+    \caption{Using the \cppinline{Inplace} command line option to print the changes to the command line if \textinline{--in_place} was not specified when running the tool.}
+    \label{code:085tool:sin_cl_in_place}
+\end{listing}
 
 \subsection{AST node matching}\label{subsec:085tool:enum_node_matching_sin}
 % recursively traversing namespaces

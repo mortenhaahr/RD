@@ -233,6 +233,7 @@ bool applyAllChanges(Rewriter &Rewrite) {
     \label{code:085tool_ex:030cstyle:SortChanges}
 \end{listing}
 
+Now that the changes have been grouped, it is time to apply the changes. In order to apply the changes, the specific source code and the file handle have to be used. This information can be extracted from the \cppinline{SourceManager} and \cppinline{FileManager}, which were created with the Tool, using the file path stored in the groups. 
 
 
 % Discuss the semantic changes that were made through this tool - focus on the calling convention to methods.

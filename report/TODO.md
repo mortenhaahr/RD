@@ -7,6 +7,7 @@
 - Write about the Clang AST and how it is different since it closely ressembles C++ code - see https://clang.llvm.org/docs/IntroductionToTheClangAST.html
 - Rename Tests to Results and provide results on running tools on existing code bases
 - Write about these deterministic tools compared to probabilistic tools (e.g. LLM)
+- Perhaps mention in discussion/future work that we could investigate the third way of implementing the enum2string tool
 - We forgot to consider following scenario:
 
 ```cpp
@@ -24,3 +25,8 @@ namespace ns {
 ```
   - Mikkel's tool will overwrite both methods
   - Morten's tool will overwrite the first occasion (global namespace to_string)
+- Write about how we wrote our own `ClangTool` implementations
+- List of abbreviations
+- Consistency with subsection, subsection*, etc.
+- Consistency with cppinline, ``code'', etc.
+- Enum-to-string tool cannot handle when definition is seperated from declaration

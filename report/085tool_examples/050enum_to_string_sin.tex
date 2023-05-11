@@ -35,8 +35,70 @@ if (!Inplace) {
     \label{code:085tool:sin_cl_in_place}
 \end{listing}
 
+The addition of ``in\_place'' option is in particular useful for the future development of tools, as it allows for better system testing, where testcases are written that compares the contents of a virtual file, before and after running the tool.
+Similar tests can throughout the tools in the LLVM repository.
+
 \subsection{AST node matching}\label{subsec:085tool:enum_node_matching_sin}
-% recursively traversing namespaces
+
+The AST node matching was by far the most challenging part of developing this tool as one needs to write a matcher that implements the following logic for each enum declaration:
+
+\vspace*{-0.75em}
+\begin{enumerate}
+    \item Find and bind enum declaration
+    \item Go to outermost namespace
+    \item Recursively traverse the namespaces to potentially find a matching \cppinline{to_string} function
+\end{enumerate}
+
+The behaviour described above is a quite complex compared to the previous tools and required the implementation of custom matchers that worked recursively, something that the builtin matchers do not support.
+
+The matcher will be described in steps below.
+
+\subsubsection*{Finding enum declarations}
+A matcher for finding the enum declarations can be seen in \cref{code:085tool:sin_enum_finder} with the parts related to finding the \cppinline{to_string} functions left out.
+The matcher is fairly straight-forward with the exception of line 4 and and 5. These are discussed below the listing.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto enumFinder =
+    enumDecl(
+        isExpansionInMainFile(),
+        has(enumConstantDecl(hasDeclContext(enumDecl().bind("enumDecl")))),
+        matchers::is_named(),
+        optionally(
+            // Find matching enum_to_string
+        ));
+    \end{cppcode}
+    \caption{Matcher for finding enum declarations.}
+    \label{code:085tool:sin_enum_finder}
+\end{listing}
+
+The intention of line 4 in \cref{code:085tool:sin_enum_finder} is simply to bind the enum declaration, similarly to how it was done with other declarations in the previous tools.
+However, the implementation is different from the other tools, since the binding is required by the matcher that is responsible for finding the matching \cppinline{to_string} functions.
+I.e., if the implementation was written as \cppinline{enumDecl(optionally(/*find to_string*/)).bind("enumDecl)}, the ``enumDecl'' binding would not be accessible to the ``to\_string'' matcher, as the outer binding does not happen until all the inner matchers are evaluated.
+Therefore, it was necessary to make the binding earlier, and line 4 is a way of achieving this.\\
+The behaviour of the line is to go to the child in the AST of the enum declaration by entering the enum constant\footnote{
+    Note that this also filters out empty enum declarations which are uninteresting in terms of having a \cppinline{to_string} function.
+}, and then going back to the parent, i.e., the enum declaration. This allows the enum declaration to be bound before running the ``to\_string matcher''.
+
+Line 5 in \cref{code:085tool:sin_enum_finder} fixes a bug that was found when running the tool on an external project, i.e., the JSON \cite{Lohmann22}.
+Before the line was introduced, the tool was unable to handle unnamed enums
+\footnote{
+    Unnamed enums were mainly used in C++ before \cppinline{constexpr} was introduced, for defining compile-time evaluated constants for metaprogramming usages.
+}, which would throw an unhandled exception.\\
+In the AST, an \cppinline{EnumDecl} inherits from a \cppinline{NamedDecl}, which contains the \cppinline{IdentifierInfo} related to the node.
+An unnamed enum can be interpreted as a \cppinline{NamedDecl} with no \cppinline{IdentifierInfo} since it does not have a name.
+The matcher can therefore be written as \cppinline{code:085tool:sin_is_named}, where the \cppinline{IdentifierInfo*} is implictly converted to a boolean, returning false in it is a nullptr.
+
+\begin{listing}[H]
+    \begin{cppcode}
+AST_MATCHER(NamedDecl, is_named) {
+	return Node.getIdentifier(); // nullptr if no name
+}
+    \end{cppcode}
+    \caption{Custom matcher for determining if a \cppinline{NamedDecl} has been given a name.}
+    \label{code:085tool:sin_is_named}
+\end{listing}
+
 
 \subsection{Node data processing}
 

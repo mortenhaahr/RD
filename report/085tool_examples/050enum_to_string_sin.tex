@@ -59,8 +59,7 @@ The matcher is fairly straight-forward with the exception of line 4 and and 5. T
 
 \begin{listing}[H]
     \begin{cppcode}
-auto enumFinder =
-    enumDecl(
+auto enumFinder = enumDecl(
         isExpansionInMainFile(),
         has(enumConstantDecl(hasDeclContext(enumDecl().bind("enumDecl")))),
         matchers::is_named(),
@@ -72,15 +71,15 @@ auto enumFinder =
     \label{code:085tool:sin_enum_finder}
 \end{listing}
 
-The intention of line 4 in \cref{code:085tool:sin_enum_finder} is simply to bind the enum declaration, similarly to how it was done with other declarations in the previous tools.
+The intention of line 3 in \cref{code:085tool:sin_enum_finder} is simply to bind the enum declaration, similarly to how it was done with other declarations in the previous tools.
 However, the implementation is different from the other tools, since the binding is required by the matcher that is responsible for finding the matching \cppinline{to_string} functions.
 I.e., if the implementation was written as \cppinline{enumDecl(optionally(/*find to_string*/)).bind("enumDecl)}, the ``enumDecl'' binding would not be accessible to the ``to\_string'' matcher, as the outer binding does not happen until all the inner matchers are evaluated.
-Therefore, it was necessary to make the binding earlier, and line 4 is a way of achieving this.\\
+Therefore, it was necessary to make the binding earlier, and line 3 is a way of achieving this.\\
 The behaviour of the line is to go to the child in the AST of the enum declaration by entering the enum constant\footnote{
     Note that this also filters out empty enum declarations which are uninteresting in terms of having a \cppinline{to_string} function.
 }, and then going back to the parent, i.e., the enum declaration. This allows the enum declaration to be bound before running the ``to\_string matcher''.
 
-Line 5 in \cref{code:085tool:sin_enum_finder} fixes a bug that was found when running the tool on an external project, i.e., the JSON \cite{Lohmann22}.
+Line 4 in \cref{code:085tool:sin_enum_finder} fixes a bug that was found when running the tool on an external project, i.e., the JSON \cite{Lohmann22}.
 Before the line was introduced, the tool was unable to handle unnamed enums
 \footnote{
     Unnamed enums were mainly used in C++ before \cppinline{constexpr} was introduced, for defining compile-time evaluated constants for metaprogramming usages.
@@ -128,6 +127,43 @@ AST_MATCHER_P(Decl, has_rec_decl_context, Matcher<Decl>, InnerMatcher) {
     \caption{Custom matcher for finding the outermost context of an AST node.}
     \label{code:085tool:sin_rec_decl}
 \end{listing}
+
+\subsubsection*{Find matching ``to\_string''}
+The remaining part of the \cppinline{enumFinder} matcher that was seen in \cref{code:085tool:sin_enum_finder} is to potentially identify the \cppinline{to_string} functions. The implementation can be seen in \cref{code:085tool:has_enum_to_string} with a description below the listing.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto enumFinder = enumDecl(
+  /* The rest of enumFinder...*/
+  optionally(
+    matchers::has_rec_decl_context(hasDescendant(
+      functionDecl(
+        hasName("to_string"),
+        parameterCountIs(1),
+        hasParameter(0,
+          parmVarDecl(hasType(
+            elaboratedType(namesType(
+              hasDeclaration(
+                equalsBoundNode("enumDecl")))))
+          ).bind("parmVar"))
+      ).bind("toString")))));
+    \end{cppcode}
+    \caption{The part of the \cppinline{enumFinder} matcher that was left out of \cref{code:085tool:sin_enum_finder}. It is responsible of optionally finding a \cppinline{to_string} function matching the ``enumDecl''.}
+    \label{code:085tool:has_enum_to_string}
+\end{listing}
+
+
+The \cppinline{optionally} matcher indicates that the inner expressions are not required and \cppinline{has_rec_decl_context} is then used to traverse to the outermost context.
+Curiously enough, unlike \cppinline{hasDeclContext}, the \cppinline{hasDescendant} function recursively matches on the descendants. This means that it can be utilized to recursively match the \cppinline{functionDecl}s.
+Furthermore, the \cppinline{functionDecl} must have the name ``to\_string'' and take a single parameter, that is of the same type as ``enumDecl''.
+The latter can be expressed by defining that the \cppinline{parmVarDecl} has a type (\cppinline{hasType}) that is an \cppinline{elaboratedType}\footnote{
+    An \cppinline{elaboratedType} refers to a type that potentially has a qualifier in ahead of it.
+}.
+The \cppinline{elaboratedType} must be equal to the enum type, which is accomplished through the \cppinline{namesType} matcher.
+However, the ``enumDecl'' tag refers to a \cppinline{Decl} instead of a \cppinline{Type}, so \cppinline{hasDeclaration} is used to refer to the \cppinline{Decl} of the \cppinline{elaboratedType}. At last it is specified that the \cppinline{Decl} of must be equivalent to the node bound by ``enumDecl''.
+
+The combined matcher satisfying the steps defined at the start of \cref{subsec:085tool:enum_node_matching_sin} was now been complete.
+It should be clear to the reader that writing a single matcher that matches on all the necessary nodes of the enum-to-string tool was no trivial achievement.
 
 \subsubsection*{Finding the namespace in code}
 Related to discussion in 6.3.3

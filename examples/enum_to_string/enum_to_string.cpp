@@ -27,6 +27,19 @@ std::string append_file_line_impl(const std::string &what, const char *file,
 		   "\n";
 }
 
+static llvm::cl::OptionCategory MyToolCategory(
+	"Enum to string generator",
+	"This tool will generate to_string methods for all the enums in the "
+	"specified source code.");
+static llvm::cl::opt<bool> Inplace(
+	"in_place",
+	llvm::cl::desc("Inplace edit <file>s, if specified. If not specified the "
+				   "generated code will be printed to cout."),
+	llvm::cl::cat(MyToolCategory));
+static llvm::cl::opt<bool> DebugMsgs(
+	"debug_info", llvm::cl::desc("Print debug information to cout."),
+	llvm::cl::cat(MyToolCategory));
+
 struct EnumStringGeneratorTool : public tooling::ClangTool {
 	EnumStringGeneratorTool(
 		const tooling::CompilationDatabase &Compilations,
@@ -65,15 +78,12 @@ struct EnumStringGeneratorTool : public tooling::ClangTool {
 	/// @param Rewrite - the rewriter to use
 	/// @return true if sucessfull
 	bool applyAllChanges(Rewriter &Rewrite) {
-
 		auto &sm = Rewrite.getSourceMgr();
 		auto &fm = sm.getFileManager();
 
 		// FIXME: Add automatic formatting support as well.
 		tooling::ApplyChangesSpec Spec;
-
-		// FIXME: We should probably cleanup the result by default as well.
-		Spec.Cleanup = false;
+		Spec.Style = format::getLLVMStyle();
 
 		// Split the changes according to filename
 		std::map<std::string, tooling::AtomicChanges> Files;
@@ -82,7 +92,6 @@ struct EnumStringGeneratorTool : public tooling::ClangTool {
 
 		// Apply all atomic changes to all files
 		for (const auto &[File, FileChanges] : Files) {
-
 			// Get File from file manager
 			auto Entry = fm.getFileRef(File);
 			if (!Entry) {
@@ -102,6 +111,11 @@ struct EnumStringGeneratorTool : public tooling::ClangTool {
 				return false;
 			}
 
+			if (!Inplace) {
+				llvm::outs() << new_code.get();
+				continue;
+			}
+
 			// Replace the entire file with the new code
 			auto fileRange = SourceRange(sm.getLocForStartOfFile(id),
 										 sm.getLocForEndOfFile(id));
@@ -117,7 +131,6 @@ struct EnumStringGeneratorTool : public tooling::ClangTool {
 };
 
 struct MyConsumer {
-
 	explicit MyConsumer(tooling::AtomicChanges &Changes) : Changes(Changes) {}
 
 	auto RefactorConsumer() {
@@ -128,19 +141,13 @@ struct MyConsumer {
 									 llvm::toString(C.takeError()) + "\n"));
 			}
 			// Print the metadata of the change
-			std::cout << C.get().Metadata << "\n";
+			if (DebugMsgs) {
+				llvm::errs() << "Debug: " << C.get().Metadata << "\n";
+			}
+
 			// Save the changes to be handled later
 			Changes.insert(Changes.begin(), C.get().Changes.begin(),
 						   C.get().Changes.end());
-
-			// Debug info
-			/*
-						std::cout << "Changes:" << std::endl;
-						for (auto changes: C.get().Changes) {
-
-							std::cout << changes.toYAMLString() << std::endl;
-						}
-			*/
 		};
 	}
 
@@ -270,7 +277,6 @@ AST_MATCHER(NamedDecl, is_named) {
 
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
-	llvm::cl::OptionCategory MyToolCategory("my-tool options");
 	auto ExpectedParser =
 		clang::tooling::CommonOptionsParser::create(argc, argv, MyToolCategory);
 	if (!ExpectedParser) {

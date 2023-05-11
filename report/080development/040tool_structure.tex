@@ -24,7 +24,7 @@ A good way of configuring the behaviour of a tool is through command line argume
 
 The way to add command line options to a tool is through the command line library provided by LLVM. This library makes it very easy to add new commands and provide help text for the options. A great example of how to use the library can be found in the implementation of ClangFormat \cite{llvmClangFormatClangFormat2023}, where they have multiple options with different types and default values.
 
-\subsection{Matching the AST} \label{subsec:080dev:ASTNodeMatching}
+\subsection{AST node matching} \label{subsec:080dev:ASTNodeMatching}
 
 The next step in working with LibTooling is to find the AST that is relevant for the tool through matching and binding. This is a very important part of the tool development as it defines what kind of information is available for the later stages of the tool. If the wrong AST is matched or the wrong nodes are bound, the later processing can become unnecessarily complex and complicated. Furthermore, the task of matching the AST can also be very difficult as there are currently more than 700 different matchers available as part of the library \cite{llvmASTMatcherReference}. 
 

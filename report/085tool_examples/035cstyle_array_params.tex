@@ -64,4 +64,6 @@ auto ParmConstArrays = parmVarDecl(
 
 This tool is a great example of the differences between extracting information through node processing as compared to filtering through matchers. The goal of this tool expansion is the same as it was for CStyle array variables, it just has to use \cppinline{ParmVarDecl}s instead of \cppinline{VarDecls}. \cppinline{ParmVarDecl}s are a specialisation of \cppinline{VarDecl}s, so all the node processing is the same for both types. Therefore the node processing can be reused for this tool expansion, and the different match filtering is all that is needed.
 
-\subsection{}
+\subsection{Handling the results}
+
+As this is an expansion to the CStyle array converter tool, the handling of the results are identical.

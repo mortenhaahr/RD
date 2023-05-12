@@ -2,8 +2,9 @@
 \section{CStyle array converter}\label{sec:045tool:c_style_array}
 
 % TODO: This deserves a more detailed discussion
+The traditional way of making arrays in C is by using the subscript operator. A C array consists of a type, a name and a constant size. The line: \cppinline{int my_array[10]} will create a variable called ``my\_array'' which is a collection of 10 consecutive integers. In C++11 a standard container called \cppinline{std::array} was added to C++. This container uses templates to create stronger typed arrays and to ensure the element type and the array size are known at compile time. This change gives the compiler more information about the intent of the code and potentially allows the backend of the compiler to make more optimisations. In C++ both ways of declaring arrays are allowed and the C way of declaration is called a CStyle array.
 
-The goal of this tool is to find all the raw CStyle arrays in C++ code and convert them into \cppinline{std::array}s. This change provides more type information to the compiler without changing the intent of the code.
+The goal of this tool is to find all the CStyle arrays in C++ code and convert them into \cppinline{std::array}s. This change provides more type information to the compiler without changing the intent of the code.
 
 One of the test cases for this tool is to convert \cppinline{static const int* const const_pointer_const_array_static[2]} into \cppinline{static std::array<const int* const>, 2> const_pointer_const_array_static}. In order to achieve this, the storage class and qualifier of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
 
@@ -180,8 +181,6 @@ During the development of this tool it was discovered, that there is a convenien
 
 The custom class has to work with \cppinline{AtomicChanges} instead of \cppinline{Replacements} but the overall structure of the \cppinline{runAndSave} method, which saves the changes to disk, is the same. As opposed to \cppinline{Replacement} objects,\cppinline{AtomicChange} objects already contain the file name for the change so all the changes can be inserted into a single \cppinline{std::vector}  and handled by the tool instead of the consumer. This change in semantics is what makes the consumer method simpler. 
 
-% Show the consumer
-
 The new consumer method takes a \cppinline{AtomicChanges} reference as a parameter and returns a lambda method which is a \cppinline{ChangeSetConsumer}. The lambda inserts valid \cppinline{AtomicChange} objects into the provided \cppinline{AtomicChanges} array for later processing. The implementation can be seen on \cref{code:085tool_ex:030cstyle:consumer_impl}.
 
 \begin{listing}[H]
@@ -203,8 +202,6 @@ auto RefactorConsumer(AtomicChanges &Changes) {
 \end{listing}
 
 \subsection{Handling the results}
-
-% Show the implementation of the tool
 
 In the previous section, a new consumer was made for the \cppinline{Transformer}. This consumer uses an external instance of \cppinline{AtomicChanges} to save the results of the tool. After all the \cppinline{AtomicChange} objects have been gathered, the changes can be applied to the source code and saved to disk - like it was done in the renaming tool. This logic has to be custom-made to use \cppinline{AtomicChange} instead of \cppinline{Replacements}. This change will be discussed here.
 
@@ -233,12 +230,46 @@ bool applyAllChanges(Rewriter &Rewrite) {
     \label{code:085tool_ex:030cstyle:SortChanges}
 \end{listing}
 
-Now that the changes have been grouped, it is time to apply the changes. In order to apply the changes, the specific source code and the file handle have to be used. This information can be extracted from the \cppinline{SourceManager} and \cppinline{FileManager}, which were created with the Tool, using the file path stored in the groups. 
+Now that the changes have been grouped, it is time to apply the changes. In order to apply the changes, the specific source code and the file handle have to be used. This information can be extracted from the \cppinline{Rewriter} through its internal \cppinline{SourceManager} and \cppinline{FileManager} using the file path stored in the groups. In order to get access to the source file from a given path, first an \cppinline{FileEntryRef} is extracted from the \cppinline{FileManager}. Then the \cppinline{SourceManager} can be used to create a \cppinline{FileID}, which can be used to access the source code. The created \cppinline{FileID} can also be used to specify the range which should be overwritten by the \cppinline{Rewriter}. Putting all of this together will commit the found file changes to disk. The implementation of this method can be seen on \cref{code:085tool_ex:030cstyle:apply_changes}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+bool applyAllChanges(Rewriter &Rewrite) {
+    // Group the Changes
+    ...
+
+    auto &sm = Rewrite.getSourceMgr();
+    auto &fm = sm.getFileManager();
+
+    for (const auto &[File, ChangesForFile] : FileChanges) {
+        auto Entry = fm.getFileRef(File); 
+        if (!Entry) {
+            llvm::errs() << Entry.takeError();
+            return false;
+        }
+
+        auto id = sm.getOrCreateFileID(Entry.get(), SrcMgr::C_User);
+
+        auto code = sm.getBufferData(id);
+        auto new_code = applyAtomicChanges(File, code, ChangesForFile, ApplyChangesSpec());
+
+        if (!new_code) {
+            llvm::errs() << new_code.takeError();
+            return false;
+        }
+
+        Rewrite.ReplaceText(
+            SourceRange(sm.getLocForStartOfFile(id), sm.getLocForEndOfFile(id)), new_code.get());
+    }
+    
+    return Rewrite.overwriteChangedFiles();
+}
+    \end{cppcode}
+    \caption{Implementation of the \cppinline{applyAllChanges} method which will apply all the generated \cppinline{AtomicChanges} to the source code and save it to disk.}
+    \label{code:085tool_ex:030cstyle:apply_changes}
+\end{listing}
 
 
-% Discuss the semantic changes that were made through this tool - focus on the calling convention to methods.
 
-% Discuss the heavier use of node processing?
 
-% Discuss the dificulties of finding the correct node types - this requires mostly knowledge of how the AST tree is build, aka which node types exist and what data do they contain.
 

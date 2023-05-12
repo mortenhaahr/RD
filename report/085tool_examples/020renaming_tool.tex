@@ -52,9 +52,7 @@ The two renaming rules can be seen on \cref{code:080dev:tool_example:rename:func
 
 \begin{listing}[H]
     \begin{cppcode}
-auto renameFunctionRule = makeRule(
-        functionNameMatcher,
-        changeTo(name("fun"), cat("MakeX")));
+auto renameFunctionRule = makeRule(functionNameMatcher, changeTo(name("fun"), cat("MakeX")));
     \end{cppcode}
     \caption{The rename function rule used in the example. The rule consists of the functionNameMatcher as specified in \cref{code:080dev:match_functionDecl_with_name} and the renaming action. In this case, the action is to change the name of the bound method to ``MakeX''.}
     \label{code:080dev:tool_example:rename:function}
@@ -62,8 +60,7 @@ auto renameFunctionRule = makeRule(
 
 \begin{listing}[H]
     \begin{cppcode}
-auto renameInvocationsRule = makeRule(
-    invocations, changeTo(cat("MakeX")))
+auto renameInvocationsRule = makeRule(invocations, changeTo(cat("MakeX")))
     \end{cppcode}
     \caption{The rename invocations rule which updates the invocations to the renamed method. Here the entire expresion is changed to the new method name.}
     \label{code:080dev:tool_example:rename:invocation}

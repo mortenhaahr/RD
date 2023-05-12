@@ -65,7 +65,7 @@ struct ArrayRefactoringTool : public ClangTool {
 		SourceManager Sources(Diagnostics, getFiles());
 		Rewriter Rewrite(Sources, DefaultLangOptions);
 
-		return applyAllChanges(Rewrite) != false;
+		return applyAllChanges(Rewrite) ? 0 : 1;
 	}
 
 	/// @brief Apply all the saved changes to the rewriter

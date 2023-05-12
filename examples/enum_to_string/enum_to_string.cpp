@@ -252,13 +252,11 @@ AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace,
 		return false;
 	}
 	auto prefix = Node.getPrefix();
-	while (true) {
-		if (!prefix) {
-			return InnerMatcher.matches(*ns, Finder, Builder);
-		}
+	while (prefix && prefix->getPrefix()) {
 		ns = prefix->getAsNamespace();
 		prefix = prefix->getPrefix();
 	}
+	return InnerMatcher.matches(*ns, Finder, Builder);
 }
 
 /// Returns false if not named - e.g. unnamed enum

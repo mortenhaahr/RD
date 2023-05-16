@@ -307,7 +307,7 @@ int main(int argc, const char **argv) {
 												   transformer::run(NodeOps::get_declarator_type_text(
 													   "parmVar")),	// Print name based on parmVar
 												   transformer::cat(transformer::name("enumDecl"))); // Print name based on enumDecl
-	auto findEnums = transformer::makeRule(
+	auto enumRule = transformer::makeRule(
 		enumFinder,
 		{addInclude("string_view", transformer::IncludeFormat::Angled),
 		 addInclude("stdexcept", transformer::IncludeFormat::Angled),
@@ -326,7 +326,7 @@ int main(int argc, const char **argv) {
 	ast_matchers::MatchFinder finder;
 	MyConsumer consumer(tool.getChanges());
 
-	tooling::Transformer transformer{findEnums, consumer.RefactorConsumer()};
+	tooling::Transformer transformer{enumRule, consumer.RefactorConsumer()};
 	transformer.registerMatchers(&finder);
 
 	// Run the tool and save the changes on disk immediately.

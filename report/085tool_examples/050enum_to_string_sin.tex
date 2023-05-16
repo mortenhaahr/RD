@@ -202,5 +202,93 @@ AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace, Matcher<NamespaceDec
 \end{listing}
 
 \subsection{Node data processing}
+The logic for the node data processing step of the enum-to-string tool can be seen in \cref{code:085tool:enum_rule}.
+The aforementioned \cppinline{enumFinder} is used as the \textit{matcher} and the \textit{edits} is a single \cppinline{changeTo} expression.
+Inside \cppinline{changeTo} the \cppinline{RangeSelector} is determined dynamically for each match, depending on whether ``toString'' was bound. If it is bound then the \cppinline{SourceLocation} of the ``toString'' node is used, otherwise, the \cppinline{SourceLocation} after the ``enumDecl'' node is used.
+The edit is performed as seen in lines 5 to 10. The interesting parts are \cppinline{print_correct_name} and \cppinline{NodeOps::case_enum_to_string}, which will be discussed below.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto enumRule = makeRule(
+    enumFinder,
+    changeTo(
+        ifBound("toString", node("toString"), after(node("enumDecl"))),
+        cat("\n\nconstexpr std::string_view to_string(",
+            print_correct_name,
+            " e){\n\tswitch(e) {\n",
+            run(NodeOps::case_enum_to_string(print_correct_name, "enumDecl")),
+            "\t}\n}")
+    ));
+    \end{cppcode}
+    \caption{Implementation of the \cppinline{enumRule} that is responsible for node data processing. The \cppinline{RewriteRule} also adds the necessary headers, which have been left out of the listing to simplify.}
+    \label{code:085tool:enum_rule}
+\end{listing}
+
+\subsubsection*{Printing the correct name}
+In order to generate the \cppinline{to_string} function, the correct notation for referring to the parameter must be used. E.g., if the enum declaration ``Animals'' is in the namespace ``ns'' and the \cppinline{to_string} function is written outside the namespace, then the declaration must be \cppinline{to_string(ns::Animals e)}.
+This is the behaviour that the callable \cppinline{print_correct_name} implements.
+If ``toString'' is bound then the notation from the existing \cppinline{to_string} function must be used, which is implemented in  
+\cppinline{run(NodeOps::get_declarator_type_text("parmVar"))}.
+Otherwise, the \cppinline{to_string} function is placed in the same namespace as the enum declaration, so no prefix is necessary.
+
+\begin{listing}[H]
+    \begin{cppcode}
+auto print_correct_name = ifBound("toString",
+    run(NodeOps::get_declarator_type_text("parmVar")),
+    transformer::cat(name("enumDecl")));
+    \end{cppcode}
+    \caption{Logic behind \cppinline{print_correct_name}.}
+    \label{code:085tool:print_correct_name}
+\end{listing}
+
+The implementation of the stencil \cppinline{get_declarator_type_text} can be seen in \cref{code:085tool:get_declarator_type_text}.
+The stencil operates on \cppinline{DeclaratorDecl}s, which can be considered an abstraction that incorporates the shared behaviour of specific declaration types, such as \cppinline{FunctionDecl} and \cppinline{VarDecl}.
+It first extracts the \cppinline{SourceRange} from the node, converts it to a \cppinline{CharSourceRange} and extracts the corresponding text from the source file, which is finally returned.
+
+\begin{listing}[H]
+    \begin{cppcode}
+resType get_declarator_type_text(StringRef Id) {
+return [=](const ast_matchers::MatchFinder::MatchResult &Match) -> Expected<std::string> {
+    auto node = Match.Nodes.getNodeAs<DeclaratorDecl>(Id);
+    if (!node) {
+        throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
+    }
+    auto sourceRange = node->getTypeSourceInfo()->getTypeLoc().getSourceRange();
+    auto charRange = CharSourceRange::getTokenRange(sourceRange);
+    auto sourceText = tooling::getText(charRange, *Match.Context).str();
+    return sourceText;
+};
+}
+    \end{cppcode}
+    \caption{The \cppinline{get_declarator_type_text} stencil.}
+    \label{code:085tool:get_declarator_type_text}
+\end{listing}
+
+\subsubsection*{Generating enum cases}
+The final part in terms of node data processing, is to generate the switch case expressions inside the \cppinline{to_string} function, i.e., generate a case expression for each \cppinline{EnumConstantDecl} inside the enum declaration.
+In order to do so, 
+
+\begin{listing}[H]
+    \begin{cppcode}
+template <typename F>
+resType foreach_enum_const(StringRef Id, F callback) {
+	return [=](const ast_matchers::MatchFinder::MatchResult &Match)
+			   -> Expected<std::string> {
+		if (auto enum_decl = Match.Nodes.getNodeAs<EnumDecl>(Id)) {
+			std::stringstream ss;
+			for (const auto enum_const : enum_decl->enumerators()) {
+				ss << callback(Match, enum_decl, enum_const);
+			}
+			return ss.str();
+		}
+
+		throw std::invalid_argument(
+			append_file_line("ID not bound or not EnumDecl: " + Id.str()));
+	};
+}
+    \end{cppcode}
+    \caption{The \cppinline{foreach_enum_const} stencil.}
+    \label{code:085tool:foreach_enum_const}
+\end{listing}
 
 \subsection{Handling the results}

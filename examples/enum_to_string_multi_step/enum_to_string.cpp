@@ -234,6 +234,15 @@ resType addNodeQualNameToCollection(StringRef Id,
 
 }  // end namespace NodeOps
 
+namespace matchers {
+
+/// Returns false if not named - e.g. unnamed enum
+AST_MATCHER(NamedDecl, is_named) {
+	return Node.getIdentifier();   // nullptr if no name
+}
+
+}	// namespace matchers
+
 int main(int argc, const char **argv) {
 	// Configuring the command-line options
 
@@ -282,7 +291,7 @@ int main(int argc, const char **argv) {
 	std::vector<std::string> enum_names;
 
 	// Matcher of existing to_string methods
-	auto match_exsisting_to_string_method =
+	auto match_existing_to_string_method =
 	    ast_matchers::functionDecl(
 	        ast_matchers::isExpansionInMainFile(),
 	        ast_matchers::hasName(to_string_method),
@@ -290,13 +299,13 @@ int main(int argc, const char **argv) {
 	        ast_matchers::hasParameter(
 	            0, ast_matchers::parmVarDecl(
 	                   ast_matchers::hasType(
-	                       ast_matchers::enumDecl().bind(enum_decl)))
+	                       ast_matchers::enumDecl(matchers::is_named()).bind(enum_decl)))
 	                   .bind(enum_parm)))
 	        .bind(to_string_method);
 
 	// Rule for existing to_string methods
 	auto rule_existing_to_string_method = transformer::makeRule(
-	    match_exsisting_to_string_method,
+		match_existing_to_string_method,
 	    {transformer::addInclude("string_view",
 	                             transformer::IncludeFormat::Angled),
 	     transformer::addInclude("stdexcept",
@@ -330,6 +339,7 @@ int main(int argc, const char **argv) {
 	auto find_other_enums =
 	    ast_matchers::enumDecl(
 	        ast_matchers::isExpansionInMainFile(),
+			matchers::is_named(),
 	        ast_matchers::unless(ast_matchers::hasAnyName(enums)))
 	        .bind(enum_decl);
 

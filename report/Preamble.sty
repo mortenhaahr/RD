@@ -54,11 +54,12 @@ anchorcolor = blue]{hyperref}
 
 % Setup of sections
 \usepackage{titlesec}
+\titlespacing{\chapter}{0pt}{-32pt}{1cm}	   % Reduce top margin of chapters
 \titleformat{\chapter}
     {\Huge \bfseries}                          % Format of the number
     {\thechapter}                              % Label 
     {10pt}                                     % Space between number and label
-    {\Huge \bfseries \vspace{0pt}}             % Font size and - style for label
+    {\Huge \bfseries \vspace{-30pt}}           % Font size and - style for label
 
 \titleformat{\section}
 	{\Large \bfseries} 	                       % Format of the number

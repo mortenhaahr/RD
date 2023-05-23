@@ -172,7 +172,7 @@ Later, this approach turned out to be unnecessarily complex during the ``node da
 However, the resulting matcher turned out to be interesting and will be discussed in the following.
 
 Binding the namespace of the \cppinline{parmVarDecl} was challenging, as it, similarly to \cppinline{has_rec_decl_context}, required recursively\footnote{
-    Once again, the implementation has been transformed to its iterative version.
+    Once again, the implementation has been transformed into its iterative version.
 }
 traversing the AST until arriving at the outermost namespace qualifier of the \cppinline{parmVarDecl}.
 Inspiration could be found in the implementation of \cppinline{specifiesNamespace} that only considers the immediate namespace of the node.
@@ -248,10 +248,10 @@ It first extracts the \cppinline{SourceRange} from the node, converts it to a \c
 \begin{listing}[H]
     \begin{cppcode}
 resType get_declarator_type_text(StringRef Id) {
-return [=](const ast_matchers::MatchFinder::MatchResult &Match) -> Expected<std::string> {
+return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
     auto node = Match.Nodes.getNodeAs<DeclaratorDecl>(Id);
     if (!node) {
-        throw std::invalid_argument(append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
+        throw std::invalid_argument("ID not bound or not DeclaratorDecl: " + Id.str());
     }
     auto sourceRange = node->getTypeSourceInfo()->getTypeLoc().getSourceRange();
     auto charRange = CharSourceRange::getTokenRange(sourceRange);
@@ -266,14 +266,20 @@ return [=](const ast_matchers::MatchFinder::MatchResult &Match) -> Expected<std:
 
 \subsubsection*{Generating enum cases}
 The final part in terms of node data processing, is to generate the switch case expressions inside the \cppinline{to_string} function, i.e., generate a case expression for each \cppinline{EnumConstantDecl} inside the enum declaration.
-In order to do so, 
+
+Given the complexity of the stencil, the group decided to employ the concept of ``function composition'' to combine several simpler stencils into a more intricate one.
+This approach allows for the construction of a complex stencil by sequentially applying and composing simpler stencils.
+
+The first stencil that was developed with such an approach, is \cppinline{foreach_enum_const} and can be seen in \cref{code:085tool:foreach_enum_const}.
+The generic stencil allows for the execution of a callback function for each \cppinline{EnumConstantDecl} that is defined inside an \cppinline{EnumDecl} and concatenates the results into a single string.
+The callback function is required to accept two parameters: A \cppinline{MatchResult} and an \cppinline{EnumConstantDecl*}Additionally, the function should return a string as its result.
+The specific function definition is enforced through metaprogramming techniques, although they are omitted from the example provided in the listing.
 
 \begin{listing}[H]
     \begin{cppcode}
 template <typename F>
 resType foreach_enum_const(StringRef Id, F callback) {
-	return [=](const ast_matchers::MatchFinder::MatchResult &Match)
-			   -> Expected<std::string> {
+	return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
 		if (auto enum_decl = Match.Nodes.getNodeAs<EnumDecl>(Id)) {
 			std::stringstream ss;
 			for (const auto enum_const : enum_decl->enumerators()) {
@@ -281,14 +287,38 @@ resType foreach_enum_const(StringRef Id, F callback) {
 			}
 			return ss.str();
 		}
-
-		throw std::invalid_argument(
-			append_file_line("ID not bound or not EnumDecl: " + Id.str()));
+		throw std::invalid_argument("ID not bound or not EnumDecl: " + Id.str());
 	};
 }
     \end{cppcode}
     \caption{The \cppinline{foreach_enum_const} stencil.}
     \label{code:085tool:foreach_enum_const}
+\end{listing}
+
+A stencil capable of generating case expressions for each \cppinline{EnumConstantDecl} was now required. This is seen in \cref{code:085tool:case_enum_to_string} where \cppinline{case_enum_to_string} is implemented.
+Inside the stencil, a lambda expression is created that is capable of generating a case expression for a single \cppinline{EnumConstantDecl}. It is then used in conjunction with \cppinline{foreach_enum_const} to iterate over each \cppinline{EnumConstantDecl}.
+
+The stencil takes another stencil as a parameter that is used to retrieve the correct identifier to use in the switch case. In practice, this involves using \cppinline{print_correct_name} as seen in \cref{code:085tool:print_correct_name}.
+The stencil then returns a string containing the complete case expression, e.g., \cppinline{case ns::Animal::Dog: return "Dog";}.
+
+\begin{listing}[H]
+    \begin{cppcode}
+resType case_enum_to_string(StringRef Id, Stencil getName) {
+	auto lambda = [getName](const MatchFinder::MatchResult &Match, const EnumDecl *enum_decl,
+					   const EnumConstantDecl *enum_const_decl) {
+			auto ns = getName->eval(Match);
+			if (!ns) {
+				throw std::invalid_argument("Could not get potential namespace");
+			}
+			return "\t\tcase " + ns.get() +
+				   "::" + enum_const_decl->getNameAsString() + ": return \"" +
+				   enum_const_decl->getNameAsString() + "\";\n";
+		};
+	return foreach_enum_const(Id, lambda);
+}
+    \end{cppcode}
+    \caption{The \cppinline{case_enum_to_string} stencil.}
+    \label{code:085tool:case_enum_to_string}
 \end{listing}
 
 \subsection{Handling the results}

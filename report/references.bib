@@ -1,19 +1,20 @@
 @video{accuconferenceAutomaticSourceCode2017,
+  entrysubtype = {video},
   title = {Automatic {{C}}++ Source Code Generation with Clang - {{Sergei Sadovnikov}} [{{ACCU}} 2017]},
   editor = {{ACCU Conference}},
+  editortype = {director},
   date = {2017},
   url = {https://www.youtube.com/watch?v=aPTyatTI42k},
-  urldate = {2023-02-01},
-  editortype = {director}
+  urldate = {2023-02-01}
 }
 
 @online{alonStructuralLanguageModels2020,
   title = {Structural {{Language Models}} of {{Code}}},
   author = {Alon, Uri and Sadaka, Roy and Levy, Omer and Yahav, Eran},
   date = {2020-07-29},
-  number = {arXiv:1910.00577},
-  eprint = {arXiv:1910.00577},
+  eprint = {1910.00577},
   eprinttype = {arxiv},
+  eprintclass = {cs, stat},
   url = {http://arxiv.org/abs/1910.00577},
   urldate = {2023-01-31},
   abstract = {We address the problem of any-code completion – generating a missing piece of source code in a given program without any restriction on the vocabulary or structure. We introduce a new approach to any-code completion that leverages the strict syntax of programming languages to model a code snippet as a tree –structural language modeling (SLM). SLM estimates the probability of the program’s abstract syntax tree (AST) by decomposing it into a product of conditional probabilities over its nodes. We present a neural model that computes these conditional probabilities by considering all AST paths leading to a target node. Unlike previous techniques that have severely restricted the kinds of expressions that can be generated in this task, our approach can generate arbitrary code in any programming language. Our model significantly outperforms both seq2seq and a variety of structured approaches in generating Java and C\# code. Our code, data, and trained models are available at http://github.com/tech-srl/ slm-code-generation/. An online demo is available at http://AnyCodeGen.org.},
@@ -55,9 +56,9 @@
   title = {Evaluating {{Large Language Models Trained}} on {{Code}}},
   author = {Chen, Mark and Tworek, Jerry and Jun, Heewoo and Yuan, Qiming and Pinto, Henrique Ponde de Oliveira and Kaplan, Jared and Edwards, Harri and Burda, Yuri and Joseph, Nicholas and Brockman, Greg and Ray, Alex and Puri, Raul and Krueger, Gretchen and Petrov, Michael and Khlaaf, Heidy and Sastry, Girish and Mishkin, Pamela and Chan, Brooke and Gray, Scott and Ryder, Nick and Pavlov, Mikhail and Power, Alethea and Kaiser, Lukasz and Bavarian, Mohammad and Winter, Clemens and Tillet, Philippe and Such, Felipe Petroski and Cummings, Dave and Plappert, Matthias and Chantzis, Fotios and Barnes, Elizabeth and Herbert-Voss, Ariel and Guss, William Hebgen and Nichol, Alex and Paino, Alex and Tezak, Nikolas and Tang, Jie and Babuschkin, Igor and Balaji, Suchir and Jain, Shantanu and Saunders, William and Hesse, Christopher and Carr, Andrew N. and Leike, Jan and Achiam, Josh and Misra, Vedant and Morikawa, Evan and Radford, Alec and Knight, Matthew and Brundage, Miles and Murati, Mira and Mayer, Katie and Welinder, Peter and McGrew, Bob and Amodei, Dario and McCandlish, Sam and Sutskever, Ilya and Zaremba, Wojciech},
   date = {2021-07-14},
-  number = {arXiv:2107.03374},
-  eprint = {arXiv:2107.03374},
+  eprint = {2107.03374},
   eprinttype = {arxiv},
+  eprintclass = {cs},
   url = {http://arxiv.org/abs/2107.03374},
   urldate = {2023-01-31},
   abstract = {We introduce Codex, a GPT language model finetuned on publicly available code from GitHub, and study its Python code-writing capabilities. A distinct production version of Codex powers GitHub Copilot. On HumanEval, a new evaluation set we release to measure functional correctness for synthesizing programs from docstrings, our model solves 28.8\% of the problems, while GPT-3 solves 0\% and GPT-J solves 11.4\%. Furthermore, we find that repeated sampling from the model is a surprisingly effective strategy for producing working solutions to difficult prompts. Using this method, we solve 70.2\% of our problems with 100 samples per problem. Careful investigation of our model reveals its limitations, including difficulty with docstrings describing long chains of operations and with binding operations to variables. Finally, we discuss the potential broader impacts of deploying powerful code generation technologies, covering safety, security, and economics.},
@@ -75,6 +76,17 @@
   abstract = {Load opening positions or create your own chess position on a chess board editor},
   langid = {american},
   organization = {{lichess.org}}
+}
+
+@software{ClangmetatoolFrameworkReusing2023,
+  title = {Clang-Metatool - {{A}} Framework for Reusing Code in Clang Tools},
+  date = {2023-05-04T03:39:04Z},
+  origdate = {2018-06-26T21:51:44Z},
+  url = {https://github.com/bloomberg/clangmetatool},
+  urldate = {2023-05-04},
+  abstract = {A framework for reusing code in Clang tools},
+  organization = {{Bloomberg}},
+  keywords = {clang}
 }
 
 @online{ClangTransformerTutorial,
@@ -106,12 +118,13 @@
 }
 
 @video{cppconUsingClangLibASTMatchers2022,
+  entrysubtype = {video},
   title = {Using {{Clang LibASTMatchers}} for {{Compliance}} in {{Codebases}} - {{Jonah Jolley}} - {{CppCon}} 2021},
   editor = {{CppCon}},
+  editortype = {director},
   date = {2022-03-14},
   url = {https://www.youtube.com/watch?v=icvNkYextOo},
-  urldate = {2023-02-01},
-  editortype = {director}
+  urldate = {2023-02-01}
 }
 
 @online{cppreferenceUndefinedBehaviorCppreference,
@@ -153,9 +166,9 @@
   title = {Content {{Enhanced BERT-based Text-to-SQL Generation}}},
   author = {Guo, Tong and Gao, Huilin},
   date = {2020-04-21},
-  number = {arXiv:1910.07179},
-  eprint = {arXiv:1910.07179},
+  eprint = {1910.07179},
   eprinttype = {arxiv},
+  eprintclass = {cs},
   url = {http://arxiv.org/abs/1910.07179},
   urldate = {2023-01-31},
   abstract = {We present a simple methods to leverage the table content for the BERT-based model to solve the text-to-SQL problem. Based on the observation that some of the table content match some words in question string and some of the table header also match some words in question string, we encode two addition feature vector for the deep model. Our methods also benefit the model inference in testing time as the tables are almost the same in training and testing time. We test our model on the WikiSQL dataset and outperform the BERT-based baseline by 3.7\% in logic form and 3.7\% in execution accuracy and achieve stateof-the-art.},
@@ -335,6 +348,17 @@
   url = {https://clang.llvm.org/docs/index.html},
   urldate = {2023-04-03},
   file = {/home/morten/Zotero/storage/HJFBUYUA/index.html}
+}
+
+@software{Lohmann22,
+  title = {{{JSON}} for {{Modern C}}++},
+  author = {Lohmann, Niels},
+  date = {2022-08},
+  origdate = {2013-07-04T08:47:49Z},
+  url = {https://github.com/nlohmann},
+  urldate = {2023-05-11},
+  abstract = {JSON for Modern C++},
+  version = {3.11.2}
 }
 
 @online{MatchingClangAST,

@@ -30,3 +30,5 @@ namespace ns {
 - Consistency with subsection, subsection*, etc.
 - Consistency with cppinline, ``code'', etc.
 - Enum-to-string tool cannot handle when definition is seperated from declaration
+- Consistency with how we refer to LibTooling classes. E.g., `parmVarDecl` is a matcher, `ParmVarDecl` is a class.
+  - We should also have a description of this

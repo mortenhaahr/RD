@@ -90,8 +90,7 @@ auto getArrayElementType(StringRef Id) {
             return array->getElementType().getAsString();
         }
 
-        throw std::runtime_error(
-			    append_file_line("ID not bound or not ArrayType: " + Id.str()));
+        throw std::runtime_error("ID not bound or not ArrayType: " + Id.str());
     };
 }
     \end{cppcode}
@@ -114,8 +113,7 @@ auto getConstArraySize(StringRef Id) {
             return ss.str();
         }
 
-        throw std::runtime_error(
-			    append_file_line("ID not bound or not ConstantArrayType: " + Id.str()));
+        throw std::runtime_error("ID not bound or not ConstantArrayType: " + Id.str());
     };
 }
     \end{cppcode}
@@ -136,8 +134,7 @@ auto getDeclQualifier(StringRef Id) {
             return getText(qualifierRange, *Match.Context).str();
         }
 
-        throw std::runtime_error(
-			    append_file_line("ID not bound or not DeclaratorDecl: " + Id.str()));
+        throw std::runtime_error("ID not bound or not DeclaratorDecl: " + Id.str());
     };
 }
     \end{cppcode}
@@ -192,7 +189,7 @@ auto RefactorConsumer(AtomicChanges &Changes) {
             }
 
             Changes.reserve(Changes.size() + C.get().Changes.size());
-			std::move(C.get().Changes.begin(), C.get().Changes.end(),
+            std::move(C.get().Changes.begin(), C.get().Changes.end(),
 			          std::back_inserter(Changes));
         };
 }

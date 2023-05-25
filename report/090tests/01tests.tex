@@ -1,1 +1,77 @@
 \chapter{Testing}
+The group was curious regarding the potential performance differences between the two implementations of the enum-to-string tools.
+This investigation aimed to provide insights into the performance implications associated with each approach.
+Prior to conducting the tests, the assumption was that the multi-step tool would be the slowest due to its requirement of running two tool invocations.
+However, there was also an expectation of performance penalties with the recursive matchers used in the single-step tool.
+
+The tests were performed on a laptop with 16GB RAM and an Intel i7-8565U CPU\footnote{
+    An 8\textsuperscript{th} generation mid-tier CPU designed for power efficiency.
+}. Furthermore, the laptop was running Linux as the operating system.
+
+The first tests were run on a simple test file that was also used to verify the behaviour of the tools. The tools were invoked on the file 100 times and the results can be seen in \cref{tab:090tests:simple}. The ``user'' and ``sys'' fields indicate the processing time spent in respectively user mode and kernel mode. The ``sum'' field indicates the sum of the fields.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|p{0.4\textwidth}|p{0.10\textwidth}|p{0.10\textwidth}|p{0.10\textwidth}|}
+    \hline
+    \rowcolor{gray!30}
+    \textbf{Tool} & \textbf{User} & \textbf{Sys} & \textbf{Sum} \\ \hline
+    Single-step enum-to-string & 11.395s & 0.936s & 12.331s \\ \hline
+    Multi-step enum-to-string & 0.591s & 0.469s & 1.060s \\ \hline
+    \end{tabular}
+    \caption{Results when running the tools 100 times on a simple test file.}
+    \label{tab:090tests:simple}
+\end{table}
+\vspace*{-1em}
+
+The tools were also tested on ``\href{https://github.com/nlohmann/json}{JSON}'' which is a popular open-source JSON header-only library, containing around 25000 lines of code.
+The tools were invoked once on the JSON library and the results can be seen in \cref{tab:090tests:json}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|p{0.4\textwidth}|p{0.10\textwidth}|p{0.10\textwidth}|p{0.10\textwidth}|}
+    \hline
+    \rowcolor{gray!30}
+    \textbf{Tool} & \textbf{User} & \textbf{Sys} & \textbf{Sum} \\ \hline
+    Single-step enum-to-string & 3m58.606s & 0m30.003s & 4m28.609s \\ \hline
+    Multi-step enum-to-string & 3m45.828s & 0m28.958s & 4m14.786s\\ \hline
+    \end{tabular}
+    \caption{Results when running the tools once on the JSON library.}
+    \label{tab:090tests:json}
+\end{table}
+\vspace*{-1em}
+
+Overall, the results of both test scenarios were quite surprising.\\
+The results from \cref{tab:090tests:simple} indicate that the multi-step tool was more than 11 times faster than the single-step tool when running on the simple test file. It is expected that this is due to the recursive matchers being ineffective.\\
+The results from \cref{tab:090tests:json} were perhaps even more surprising, as they showed that there was only a $5.28\%$ difference\footnote{
+    Calculated with $\frac{|268.609-254.786|}{(268.609+254.786)/2}$
+} between the two tools when running on the JSON library.
+The group's current hypothesis is, that it is due to the parsing of the AST from LibTooling as the file is so large.
+An attempt was made to validate this hypothesis by profiling the tools. However, the profiling process proved challenging as it was difficult to differentiate the application code from the library code.
+This challenge arose from a combination of factors, including the dynamic linking of the library code and the use of custom stencils and matchers passed as parameters in the application code.
+In the case of dynamic linking, the profiler can only capture and profile the function calls available in the library's public API.
+This means that internal function calls within the library are not visible to the profiler.
+Since the custom stencils and matchers are essentially passed as function pointers, they are being executed inside the internal parts of the library, which is inaccessible to the profiler.
+As a result of the challenges, the profiling results were inconclusive. 
+
+The results of the tests should be interpreted cautiously due to the small sample size and potential variations in other source files.
+
+% Single-step - 100 times - default arguments - release mode - normal input file
+% real	0m12.336s
+% user	0m11.395s
+% sys	    0m0.936s
+
+% Multi-step - 100 times - default arguments - release mode - normal input file
+% real    0m1.064s
+% user    0m0.591s
+% sys     0m0.469s
+
+% Single-step - 1 times - default arguments - release mode - nlohmann/json.hpp
+% real	6m15.532s
+% user	3m58.606s
+% sys	    0m30.003s
+
+% Multi-step - 1 times - default arguments - release mode - nlohmann/json.hpp
+% real	5m57.593s
+% user	3m45.828s
+% sys	    0m28.958s

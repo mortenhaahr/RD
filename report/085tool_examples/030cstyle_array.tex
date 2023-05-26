@@ -265,7 +265,6 @@ bool applyAllChanges(Rewriter &Rewrite) {
         Rewrite.ReplaceText(
             SourceRange(sm.getLocForStartOfFile(id), sm.getLocForEndOfFile(id)), new_code.get());
     }
-    
     return Rewrite.overwriteChangedFiles();
 }
     \end{cppcode}

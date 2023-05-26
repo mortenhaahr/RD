@@ -2,11 +2,11 @@
 The following section describes the enum-to-string tool where the entire tool is implemented as a single \cppinline{ClangTool}.
 
 \subsection{Command line parsing}
-Most of the command line parsing was done similarly as in \cref{sec:085tool:example:simple_rename}. However, the behaviour was extended with the introduction of some new command line options for the user to specify.
-The command-line option ``in\_place'' was introduced, allowing the user to have the file changes written to the terminal instead of directly to the file.
-The other option ``debug\_info'' makes the tool print extra debug information to the console.
+Most of the command line parsing was implemented as described in \cref{sec:085tool:example:simple_rename}. However, the behaviour was extended with two new options; ``in\_place'' and ``debug \_info''.
+The ``in\_place'' option allows the user to specify whether the changes should be printed to the terminal or saved directly to the file.
+The ``debug\_info'' option makes the tool print extra debug information to the console during execution.
 
-The additional options were easily introduced as booleans options through the LLVM command line API, as seen in \cref{code:085tool:sin_cl_options}. One simply needs to specify a description and add it to the \cppinline{OptionCategory} -- which is \cppinline{MyToolCategory} in this case.
+The additional options were introduced as booleans options through the LLVM command line API, as seen in \cref{code:085tool:sin_cl_options}. It is simple to add command line options as one simply needs to specify a description and add it to the \cppinline{OptionCategory} -- which is \cppinline{MyToolCategory} in this case.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -35,7 +35,7 @@ if (!Inplace) {
     \label{code:085tool:sin_cl_in_place}
 \end{listing}
 
-The addition of ``in\_place'' option is in particular useful for the future development of tools, as it allows for better system testing, where test cases are written that compares the contents of a virtual file, before and after running the tool.
+The addition of ``in\_place'' option is in particular useful for the future development of tools, as it allows for easier system testing. It does so because test cases can be run on small and very specific virtual files instead of an existing code base.
 Similar tests can be seen throughout the tools in the LLVM repository.
 
 \subsection{AST node matching}\label{subsec:085tool:enum_node_matching_sin}
@@ -49,9 +49,8 @@ The AST node matching was by far the most challenging part of developing this to
     \item Recursively traverse the namespace to potentially find a matching \cppinline{to_string} function
 \end{enumerate}
 
-The behaviour described above is quite complex compared to the previous tools and required the implementation of custom matchers that worked recursively, something that the built-in matchers do not support.
-
-The matcher will be described in the steps below.
+The behaviour described above is quite complex compared to the previous tools and required the implementation of recursive matchers, which the built-in matchers do not support. \\
+The custom matchers will be described in the steps below.
 
 \subsubsection*{Finding enum declarations}
 A matcher for finding the enum declarations can be seen in \cref{code:085tool:sin_enum_finder} with the parts related to finding the \cppinline{to_string} functions left out.
@@ -71,22 +70,22 @@ auto enumFinder = enumDecl(
     \label{code:085tool:sin_enum_finder}
 \end{listing}
 
-The intention of line 3 in \cref{code:085tool:sin_enum_finder} is simply to bind the enum declaration, similarly to how it was done with other declarations in the previous tools.
-However, the implementation is different from the other tools, since the binding is required by the matcher that is responsible for finding the matching \cppinline{to_string} functions.
-I.e., if the implementation was written as \cppinline{enumDecl(optionally(/*find to_string*/)).bind("enumDecl)}, the ``enumDecl'' binding would not be accessible to the ``to\_string'' matcher, as the outer binding does not happen until all the inner matchers are evaluated.
+The intention of line 3 in \cref{code:085tool:sin_enum_finder} is simply to bind the enum declaration, similarly to how it was done in the previous tools.
+However, the implementation is different from the other tools, since the binding is used by the inner \cppinline{to_string} function matcher.
+I.e., if the implementation was written as \cppinline{enumDecl(optionally(/*find to_string*/)).bind("enumDecl)}, the ``enumDecl'' binding would not be accessible to the ``to\_string'' matcher, as the outer binding only happens after all the inner matchers are evaluated.
 Therefore, it was necessary to make the binding earlier, and line 3 is a way of achieving this.\\
-The behaviour of the line is to go to the child in the AST of the enum declaration by entering the enum constant\footnote{
+The behaviour of the line is to find an enum declaration with an enum constant declaration\footnote{
     Note that this also filters out empty enum declarations which are uninteresting in terms of having a \cppinline{to_string} function.
-}, and then going back to the parent, i.e., the enum declaration. This allows the enum declaration to be bound before running the ``to\_string matcher''.
+} and then backtrack from the enum constant declaration in order to bind the original enum declaration. This logic allows the enum declaration to be bound before running the ``to\_string'' matcher.
 
 Line 4 in \cref{code:085tool:sin_enum_finder} fixes a bug that was found when running the tool on an external project, i.e., the JSON \cite{Lohmann22}.
-Before the line was introduced, the tool was unable to handle unnamed enums
+Before this line was introduced, the tool was unable to handle unnamed enums
 \footnote{
     Unnamed enums were mainly used in C++ before \cppinline{constexpr} was introduced, for defining compile-time evaluated constants for metaprogramming usages.
 }, which would throw an unhandled exception.\\
 In the AST, an \cppinline{EnumDecl} inherits from a \cppinline{NamedDecl}, which contains the \cppinline{IdentifierInfo} related to the node.
 An unnamed enum can be interpreted as a \cppinline{NamedDecl} with no \cppinline{IdentifierInfo} since it does not have a name.
-The matcher can therefore be written as \cppinline{code:085tool:sin_is_named}, where the \cppinline{IdentifierInfo*} is implicitly converted to a boolean, returning false in it is a nullptr.
+The matcher can therefore be written as \cref{code:085tool:sin_is_named}, where the \cppinline{IdentifierInfo*} is implicitly converted to a boolean, returning false in it is a nullptr.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -99,14 +98,14 @@ AST_MATCHER(NamedDecl, is_named) {
 \end{listing}
 
 \subsubsection*{Finding the outermost namespace}
-In order to potentially find the \cppinline{to_string} method matching the \cppinline{EnumDecl}, one must consider that the function might be placed inside a different namespace than the \cppinline{EnumDecl}.
+In order to potentially find the \cppinline{to_string} method matching the \cppinline{EnumDecl}, one must consider that the function might be placed inside a different namespace.
 For that reason, it is necessary to consider all the namespaces inside the compilation unit when searching.
 The implementation for such a matcher is somewhat similar to the implementation of the built-in \cppinline{hasDeclContext} that was used in \cref{code:085tool:sin_enum_finder}. 
 The behaviour of \cppinline{hasDeclContext} is to return false, if the declaration does not have a \cppinline{DeclContext}\footnote{
     An example of a case of a \cppinline{Decl} that does not have \cppinline{DeclContext} is the outermost \cppinline{TranslationUnitDecl}.
 }, otherwise return the result of evaluating the \cppinline{InnerMatcher} on the context casted to a \cppinline{Decl}.\\
 The behaviour for the recursive version\footnote{Note that while the implementation seen in \cref{code:085tool:sin_rec_decl} has been transformed to its iterative version, the methodology can be considered recursively traversing the AST.} 
-(\cppinline{has_rec_decl_context}) is similar, but instead of evaluating the immediate parent context, it is evaluated in the outermost context. The implementation can be seen in \cref{code:085tool:sin_rec_decl}.
+(\cppinline{has_rec_decl_context}) is similar, but instead of evaluating the inner matcher in the immediate parent context, it is evaluated in the outermost context. The implementation can be seen in \cref{code:085tool:sin_rec_decl}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -154,33 +153,33 @@ auto enumFinder = enumDecl(
 \end{listing}
 
 
-The \cppinline{optionally} matcher indicates that the inner expressions are not required and \cppinline{has_rec_decl_context} is then used to traverse to the outermost context.
-Curiously enough, unlike \cppinline{hasDeclContext}, the \cppinline{hasDescendant} function recursively matches on the descendants. This means that it can be utilized to recursively match the \cppinline{functionDecl}s.
-Furthermore, the \cppinline{functionDecl} must have the name ``to\_string'' and take a single parameter, that is of the same type as ``enumDecl''.
-The latter can be expressed by defining that the \cppinline{parmVarDecl} has a type (\cppinline{hasType}) that is an \cppinline{elaboratedType}\footnote{
+The \cppinline{optionally} matcher indicates that the inner matcher is optional. \cppinline{has_rec_decl_context} is then used to traverse to the outermost context.
+Curiously enough, unlike \cppinline{hasDeclContext}, the \cppinline{hasDescendant} function recursively matches on the descendants. This means that it can be utilized to recursively match the \cppinline{functionDecl}s in the context.
+There are a couple of restrictions placed on the \cppinline{functionDecl} in order to be matched. It has to have the correct name and only a single parameter. The parameter also has to be identical to the previously bound ``enumDecl'' node.
+The equality between the bound node and the parameter type is expressed through a series of matchers. As it is the type of the parameter which is interesting, the \cppinline{hasType} matcher is used. As the enum type may have a namespace qualifier, the inner matcher must take that into account and that is done through the \cppinline{elaboratedType}\footnote{
     An \cppinline{elaboratedType} refers to a type that potentially has a qualifier ahead of it.
-}.
-The \cppinline{elaboratedType} must be equal to the enum type, which is accomplished through the \cppinline{namesType} matcher.
-However, the ``enumDecl'' tag refers to a \cppinline{Decl} instead of a \cppinline{Type}, so \cppinline{hasDeclaration} is used to refer to the \cppinline{Decl} of the \cppinline{elaboratedType}. At last, it is specified that the \cppinline{Decl} of must be equivalent to the node bound by ``enumDecl''.
+} matcher.
+The type has to be extracted from the \cppinline{elaboratedType} and that is done through the \cppinline{namesType} matcher.
+The ``enumDecl'' tag, which was bound earlier, refers to a \cppinline{Decl} instead of a \cppinline{Type}, so \cppinline{hasDeclaration} is used to refer to the underlying \cppinline{Decl} stored in the \cppinline{elaboratedType}. The last step is to compare the \cppinline{Decl} to the bound ``enumDecl'' node.
 
-The combined matcher satisfying the steps defined at the start of \cref{subsec:085tool:enum_node_matching_sin} was now been completed.
+The combined matcher satisfying the steps defined at the start of \cref{subsec:085tool:enum_node_matching_sin} has now been completed.
 It should be clear to the reader that writing a single matcher that matches all the necessary nodes of the enum-to-string tool was no trivial achievement.
 
 \subsubsection*{Finding the namespace in code}
-When developing the single-step enum-to-string tool, the initial solution also consisted of potentially binding the namespace of the \cppinline{parmVarDecl}, as it was thought to be needed during node data processing.
-Later, this approach turned out to be unnecessarily complex during the ``node data processing'' step, compared to retrieving the namespace through the \cppinline{SourceLocation}s.
+When developing the single-step enum-to-string tool, the initial solution also contained a potential binding of the namespace of the \cppinline{parmVarDecl}, as it was thought to be needed during node data processing.
+Later during the ``node data processing'' step, this approach turned out to be unnecessarily complex compared to retrieving the namespace directly through the \cppinline{SourceLocation}s.
 However, the resulting matcher turned out to be interesting and will be discussed in the following.
 
 Binding the namespace of the \cppinline{parmVarDecl} was challenging, as it, similarly to \cppinline{has_rec_decl_context}, required recursively\footnote{
     Once again, the implementation has been transformed into its iterative version.
 }
 traversing the AST until arriving at the outermost namespace qualifier of the \cppinline{parmVarDecl}.
-Inspiration could be found in the implementation of \cppinline{specifiesNamespace} that only considers the immediate namespace of the node.
+Inspiration was found in the implementation of \cppinline{specifiesNamespace} which only considers the immediate namespace of the node.
 
 The implementation of the matcher can be seen in \cref{code:085tool:rec_specifies_namespace}. Initially, it is verified that the node can be cast to a \cppinline{NamespaceDecl}.
 The function \cppinline{getPrefix()} can be used to check if there is a \cppinline{NestedNameSpecifier} prefixing the current node.
 The function \cppinline{getAsNamespace} can be used to convert the \cppinline{NestedNameSpecifier} to its underlying \cppinline{NamespaceDecl}.
-Finally, the \cppinline{InnerMatcher} matches on the outermost \cppinline{NamespaceDecl} of the \cppinline{ParmVarDecl}.
+Finally, the \cppinline{InnerMatcher} is run on the outermost \cppinline{NamespaceDecl} of the \cppinline{ParmVarDecl}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -204,7 +203,7 @@ AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace, Matcher<NamespaceDec
 \subsection{Node data processing}
 The logic for the node data processing step of the enum-to-string tool can be seen in \cref{code:085tool:enum_rule}.
 The aforementioned \cppinline{enumFinder} is used as the \textit{matcher} and the \textit{edits} is a single \cppinline{changeTo} expression.
-Inside \cppinline{changeTo} the \cppinline{RangeSelector} is determined dynamically for each match, depending on whether ``toString'' was bound. If it is bound then the \cppinline{SourceLocation} of the ``toString'' node is used, otherwise, the \cppinline{SourceLocation} after the ``enumDecl'' node is used.
+Inside \cppinline{changeTo} the \cppinline{RangeSelector} is determined dynamically for each match, depending on whether ``toString'' was bound. If it is bound then the \cppinline{SourceLocation} of the ``toString'' node is used, otherwise, the \cppinline{SourceLocation} right after the ``enumDecl'' node is used.
 The edit is performed as seen in lines 5 to 10. The interesting parts are \cppinline{print_correct_name} and \cppinline{NodeOps::case_enum_to_string}, which will be discussed below.
 
 \begin{listing}[H]
@@ -216,7 +215,7 @@ auto enumRule = makeRule(
         cat("\n\nconstexpr std::string_view to_string(",
             print_correct_name,
             " e){\n\tswitch(e) {\n",
-            run(NodeOps::case_enum_to_string(print_correct_name, "enumDecl")),
+            run(case_enum_to_string(print_correct_name, "enumDecl")),
             "\t}\n}")
     ));
     \end{cppcode}
@@ -227,15 +226,15 @@ auto enumRule = makeRule(
 \subsubsection*{Printing the correct name}
 In order to generate the \cppinline{to_string} function, the correct notation for referring to the parameter must be used. E.g., if the enum declaration ``Animals'' is in the namespace ``ns'' and the \cppinline{to_string} function is written outside the namespace, then the declaration must be \cppinline{to_string(ns::Animals e)}.
 This is the behaviour that the callable \cppinline{print_correct_name} implements.
-If ``toString'' is bound then the notation from the existing \cppinline{to_string} function must be used, which is implemented in  
-\cppinline{run(NodeOps::get_declarator_type_text("parmVar"))}.
-Otherwise, the \cppinline{to_string} function is placed in the same namespace as the enum declaration, so no prefix is necessary.
+If the ``toString'' node is bound then the notation from the existing \cppinline{to_string} function must be used, which is implemented in  
+\cppinline{run(get_declarator_type_text("parmVar"))}.
+Otherwise, the \cppinline{to_string} function is generated in the same namespace as the enum declaration, so no prefix is necessary.
 
 \begin{listing}[H]
     \begin{cppcode}
 auto print_correct_name = ifBound("toString",
-    run(NodeOps::get_declarator_type_text("parmVar")),
-    transformer::cat(name("enumDecl")));
+    run(get_declarator_type_text("parmVar")),
+    cat(name("enumDecl")));
     \end{cppcode}
     \caption{Logic behind \cppinline{print_correct_name}.}
     \label{code:085tool:print_correct_name}
@@ -265,14 +264,14 @@ return [=](const MatchFinder::MatchResult &Match) -> Expected<std::string> {
 \end{listing}
 
 \subsubsection*{Generating enum cases}
-The final part in terms of node data processing, is to generate the switch case expressions inside the \cppinline{to_string} function, i.e., generate a case expression for each \cppinline{EnumConstantDecl} inside the enum declaration.
+The final part in terms of node data processing, is to generate the case expressions inside the \cppinline{to_string} function, i.e., generate a case expression for each \cppinline{EnumConstantDecl} inside the enum declaration.
 
 Given the complexity of the stencil, the group decided to employ the concept of ``function composition'' to combine several simpler stencils into a more intricate one.
 This approach allows for the construction of a complex stencil by sequentially applying and composing simpler stencils.
 
 The first stencil that was developed with such an approach, is \cppinline{foreach_enum_const} and can be seen in \cref{code:085tool:foreach_enum_const}.
 The generic stencil allows for the execution of a callback function for each \cppinline{EnumConstantDecl} that is defined inside an \cppinline{EnumDecl} and concatenates the results into a single string.
-The callback function is required to accept two parameters: A \cppinline{MatchResult} and an \cppinline{EnumConstantDecl*}Additionally, the function should return a string as its result.
+The callback function is required to accept two parameters: A \cppinline{MatchResult} and an \cppinline{EnumConstantDecl*}. Additionally, the function should return a string as its result.
 The specific function definition is enforced through metaprogramming techniques, although they are omitted from the example provided in the listing.
 
 \begin{listing}[H]
@@ -296,7 +295,7 @@ resType foreach_enum_const(StringRef Id, F callback) {
 \end{listing}
 
 A stencil capable of generating case expressions for each \cppinline{EnumConstantDecl} was now required. This is seen in \cref{code:085tool:case_enum_to_string} where \cppinline{case_enum_to_string} is implemented.
-Inside the stencil, a lambda expression is created that is capable of generating a case expression for a single \cppinline{EnumConstantDecl}. It is then used in conjunction with \cppinline{foreach_enum_const} to iterate over each \cppinline{EnumConstantDecl}.
+The stencil is capable of generating a case expression for a single \cppinline{EnumConstantDecl}. It is then used in conjunction with \cppinline{foreach_enum_const} to iterate over each \cppinline{EnumConstantDecl}.
 
 The stencil takes another stencil as a parameter that is used to retrieve the correct identifier to use in the switch case. In practice, this involves using \cppinline{print_correct_name} as seen in \cref{code:085tool:print_correct_name}.
 The stencil then returns a string containing the complete case expression, e.g., \cppinline{case ns::Animal::Dog: return "Dog";}.
@@ -306,11 +305,11 @@ The stencil then returns a string containing the complete case expression, e.g.,
 resType case_enum_to_string(StringRef Id, Stencil getName) {
 	auto lambda = [getName](const MatchFinder::MatchResult &Match, const EnumDecl *enum_decl,
 					   const EnumConstantDecl *enum_const_decl) {
-			auto ns = getName->eval(Match);
-			if (!ns) {
-				throw std::invalid_argument("Could not get potential namespace");
+			auto name = getName->eval(Match);
+			if (!name) {
+				throw std::invalid_argument("Could not get name");
 			}
-			return "\t\tcase " + ns.get() +
+			return "\t\tcase " + name.get() +
 				   "::" + enum_const_decl->getNameAsString() + ": return \"" +
 				   enum_const_decl->getNameAsString() + "\";\n";
 		};
@@ -322,4 +321,4 @@ resType case_enum_to_string(StringRef Id, Stencil getName) {
 \end{listing}
 
 \subsection{Handling the results}
-The results are handled identically to how it was done in the ``CStyle array converter'' tool.
+The results are handled identically to how it was done in the ``CStyle array converter'' tool \cref{sec:045tool:c_style_array}.

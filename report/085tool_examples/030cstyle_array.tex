@@ -1,12 +1,17 @@
 
 \section{CStyle array converter}\label{sec:045tool:c_style_array}
 
-% TODO: This deserves a more detailed discussion
-The traditional way of making arrays in C is by using the subscript operator. A C array consists of a type, a name and a constant size. The line: \cppinline{int my_array[10]} will create a variable called ``my\_array'' which is a collection of 10 consecutive integers. In C++11 a standard container called \cppinline{std::array} was added to C++. This container uses templates to create stronger typed arrays and to ensure the element type and the array size are known at compile time. This change gives the compiler more information about the intent of the code and potentially allows the backend of the compiler to make more optimisations. In C++ both ways of declaring arrays are allowed and the C way of declaration is called a CStyle array.
+The traditional way of making arrays in C is by using the subscript operator. A fixed-size C array consists of a type, a name and a constant size. The line \cppinline{int my_array[10]} will create a variable called ``my\_array'' which is a collection of 10 consecutive integers.
+In C++, this style of declaring an array is called a CStyle array.\\
+In C++11 the container \cppinline{std::array} was added to the standard library, which acts as a wrapper around the CStyle array.
+It combines the performance of a CStyle array while having the benefits of a standard container, such as knowing the size of the container and providing access to iterators \cite{cppreferenceStdArrayCppreference}.
+In C++ both ways of declaring arrays are allowed, however, \cppinline{std::array} is generally preferred, as it is considered safer since it makes bounds-checking easier.
+Bounds safety is of great concern in C++ as the language does not provide built-in mechanisms to prevent out-of-bounds errors.
+These errors are considered a serious issue, and out-of-bounds writes were ranked as the most dangerous software weakness in 2022 on the Common Weakness Enumeration list\footnote{The list ranks software weaknesses based on their commonness and impactfulness.} \cite{mitreCWE2022CWE}.
 
-The goal of this tool is to find all the CStyle arrays in C++ code and convert them into \cppinline{std::array}s. This change provides more type information to the compiler without changing the intent of the code.
+The goal of this tool is to find all the constantly sized CStyle arrays in the source code and convert them into \cppinline{std::array}s.
 
-One of the test cases for this tool is to convert \cppinline{static const int* const const_pointer_const_array_static[2]} into \cppinline{static std::array<const int* const>, 2> const_pointer_const_array_static}. In order to achieve this, the storage class and qualifier of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
+One of the test cases for this tool is to convert \cppinline{static const int* const const_pointer_const_array_static[2]} into \cppinline{static std::array<const int* const>, 2> const_pointer_const_array_static}. In order to achieve this, the storage (static) class and const-qualifiers of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
 
 \subsection{Command line parsing}
 
@@ -21,11 +26,12 @@ The \cppinline{Array} type is a base type for all the other types of CStyle arra
 
 Each of the types has a corresponding matcher which allows the creator of a tool to match only the wanted types of CStyle arrays. The focus of this tool is solely on \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
 
-The constant array type node contains the element type of the array as well as the number of elements in the array. The constant array type node does not contain the storage specifier for the type (e.g., static or extern) so that information must be bound in another way. The storage specifier is stored in the declaration of the array which is a \cppinline{VarDecl}. For this tool, the bound declaration will also make it easy to access the qualifiers for the CStyle array. 
+The constant array type node contains the element type of the array as well as the number of elements in the array. The constant array type node does not contain the storage specifier for the type (e.g., static or extern) so that information must be bound in another way. The storage specifier is stored in the declaration of the array which is a \cppinline{VarDecl}. For this tool, the bound declaration will also make it easy to access the namespace-qualifiers for the CStyle array. 
 
 There is a problem however as this tool also aims to refactor the raw CStyle arrays declared inside of classes. This distinction matters for the declaration of the variables, as variables inside classes are \cppinline{FieldDecl}s and not \cppinline{VarDecl}s. For this matcher, the type of node to match must therefore be more generic than the \cppinline{VarDecl}. This can be achieved by using the \cppinline{DeclaratorDecl} matcher which matches on \cppinline{DeclaratorDecl}s, which is the common base class between \cppinline{VarDecl}s and \cppinline{FieldDecl}s.
 
 The variable declaration for the arrays also contains the bounded location of the declaration in the source code. This can be easily extracted through the \cppinline{typeLoc} matcher. This information will make it easier to change the correct location in the source code in the following steps and is therefore present in the matcher.
+The complete matcher for finding constant arrays can be seen in \cref{code:085tool_ex:CSMatcher}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -47,17 +53,16 @@ As described in the previous section, there are multiple pieces of information w
 
 From \cref{code:085tool_ex:CSMatcher} three node types were bound. ``array'' is the type of constant array that was found, ``arrayLoc'' is the location of the constant array in the source code and ``arrayDecl'' is the entire declaration of the array.
 
-As shown in the introduction to this section, a test case for this tool is to convert \cppinline{static const int* const ID[2]} into \cppinline{static std::array<const int* const, 2> ID}.
-
 \subsubsection*{RangeSelector}
 The first thing needed in order to make the change is to extract the source code range from the nodes. The ``arrayLoc'' node, which has been bound, is a \cppinline{TypeLoc} which spans the \cppinline{[number_of_elements]} part of the CStyle array.
 This may seem a bit confusing at first, but the behaviour is due to the \cppinline{typeLoc} referring to the underlying \cppinline{ArrayTypeLoc}, i.e., the part of the source code that makes it a CStyle array.
-``arrayLoc'' can be used in conjunction with the ``arrayDecl'' node in order to get the entire source code range for the array declaration. The \cppinline{RangeSelector} API has a convenience method \cppinline{encloseNodes} which is meant for exactly this purpose.
+``arrayLoc'' can be used in conjunction with the ``arrayDecl'' node in order to get the entire source code range for the array declaration. The \cppinline{RangeSelector} API has a convenience function \cppinline{encloseNodes} which is meant for exactly this purpose.
 
 \subsubsection*{StorageClass}
-Now that the correct source code range has been found, it is time to populate it with the correct information. As specified earlier the storage specifier for the declaration must be kept and it can be found through the \cppinline{getStorageClass} method on VarDecl nodes. This method is not present in FieldDecl nodes because they don't have storage specifiers. static FieldDecls inside classes are converted to VarDecls during the AST generation, as these variables are independent of the individual class instances. 
+Now that the correct source code range has been found, it is time to populate it with the correct information. As specified earlier the storage specifier for the declaration must be kept and it can be found through the \cppinline{getStorageClass} function on VarDecl nodes. This function is not present in FieldDecl nodes because they don't have storage specifiers. \cppinline{static} FieldDecls inside classes are converted to VarDecls during the AST generation, as these variables are independent of the individual class instances. 
 
-The \cppinline{getStorageClass} method can be implemented as a \cppinline{MatchConsumer<std::string>} which will make it easy to use the method to make source-code refactoring (see \cref{sec:080dev:tool_structure}). An implementation of such a method can be seen on \cref{code:085tool_ex:VarStorageString}.
+The \cppinline{getStorageClass} function can be implemented as a \cppinline{MatchConsumer<std::string>} which will make it easy to use the function to make source-code refactoring (see \cref{sec:080dev:tool_structure}). An implementation of such a function can be seen on \cref{code:085tool_ex:VarStorageString}.
+Notice that if the node is a FieldDecl, the function will return an empty string.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -69,7 +74,6 @@ auto getVarStorage(StringRef Id) {
                return std::string(VarDecl::getStorageClassSpecifierString(storage_class)) + " ";
             }
         }
-
         return "";
     };
 }
@@ -80,7 +84,7 @@ auto getVarStorage(StringRef Id) {
 
 \subsubsection*{Array element type}
 
-The array element type is stored inside the \cppinline{ConstantArrayType} node. It can be accessed through the \cppinline{getElementType} method call. Like the storage class specifier on \cref{code:085tool_ex:VarStorageString} the easiest way to work with the element type for this tool is through the Stencil library. The getArrayElementType method will therefore be implemented as a MatchConsumer. The implementation of the method can be seen on \cref{code:085tool_ex:ArrayElemtType}. 
+The array element type is stored inside the \cppinline{ConstantArrayType} node. It can be accessed through the \cppinline{getElementType} method call. Like the storage class specifier in \cref{code:085tool_ex:VarStorageString} the easiest way to work with the element type for this tool is through the Stencil library. The getArrayElementType method will therefore be implemented as a MatchConsumer. The implementation of the function can be seen in \cref{code:085tool_ex:ArrayElemtType}. 
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -89,7 +93,6 @@ auto getArrayElementType(StringRef Id) {
         if (auto array = Match.Nodes.getNodeAs<ArrayType>(Id)) {
             return array->getElementType().getAsString();
         }
-
         throw std::runtime_error("ID not bound or not ArrayType: " + Id.str());
     };
 }
@@ -100,7 +103,7 @@ auto getArrayElementType(StringRef Id) {
 
 \subsubsection*{Array size}
 
-The size of the array can also, like the array element type, be extracted through the ConstantArrayType node. The implementation of the extraction method can be seen on \cref{code:085tool_ex:ConstArraySize}.
+The size of the array can also, like the array element type, be extracted through the ConstantArrayType node. The implementation of the extraction method can be seen in \cref{code:085tool_ex:ConstArraySize}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -112,7 +115,6 @@ auto getConstArraySize(StringRef Id) {
             ss << size;
             return ss.str();
         }
-
         throw std::runtime_error("ID not bound or not ConstantArrayType: " + Id.str());
     };
 }
@@ -121,9 +123,10 @@ auto getConstArraySize(StringRef Id) {
     \label{code:085tool_ex:ConstArraySize}
 \end{listing}
 
-\subsubsection*{Declaration qualifiers}
+\subsubsection*{Declaration namespace-qualifiers}
 
-The last piece of the puzzle is to keep the qualifiers of the declaration. The qualifiers are the explicit namespaces in front of the name of the declaration. E.g., \cppinline{uint8_t my_namespace::array[5];} has the qualifiers \cppinline{my_namespace::}, while \cppinline{uint8_t array[4];} has no qualifiers. These qualifiers are part of the declaration and the easiest way to extract them is to copy the literal text in the source code. The literal source code of declarations can be extracted through the source range of the node. \cref{code:085tool_ex:DeclaratorQualif} shows how the qualifiers of a \cppinline{DeclaratorDecl} can be extracted from the source-code.
+The last step is to keep the namespace-qualifiers of the declaration. The qualifiers of interest are the explicit namespaces in front of the name of the declaration, including the scope resolution operator. E.g., \cppinline{uint8_t my_namespace::array[5];} has the qualifiers \cppinline{my_namespace::}, while \cppinline{uint8_t array[4];} has no qualifiers.
+These qualifiers are part of the declaration and the easiest way to extract them is to copy the literal text in the source code. The literal source code of declarations can be extracted through the source range of the node. \Cref{code:085tool_ex:DeclaratorQualif} shows how the qualifiers of a \cppinline{DeclaratorDecl} can be extracted from the source-code.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -133,18 +136,17 @@ auto getDeclQualifier(StringRef Id) {
             CharSourceRange qualifierRange = getTokenRange(decl->getQualifierLoc().getSourceRange());
             return getText(qualifierRange, *Match.Context).str();
         }
-
         throw std::runtime_error("ID not bound or not DeclaratorDecl: " + Id.str());
     };
 }
     \end{cppcode}
-    \caption{Method to extract the qualifiers from the source code range of a DeclaratorDecl node.}
+    \caption{Method to extract the namespace-qualifiers from the source code range of a DeclaratorDecl node.}
     \label{code:085tool_ex:DeclaratorQualif}
 \end{listing}
 
 \subsubsection*{Creating the transformation rule}
 
-With all the relevant information extracted from the bound nodes, a transformation rule can be made to create the wanted source-code refactoring. The code for the rule can be found on \cref{code:085tool_ex:Rule}.
+With all the relevant information extracted from the bound nodes, a \cppinline{RewriteRule} can be made to create the source-code refactoring. The code for the rule can be found on \cref{code:085tool_ex:Rule}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -166,15 +168,20 @@ auto CStyleArrayConverterRule = makeRule(
         )
     });
     \end{cppcode}
-    \caption{The entire rule for generating the wanted \cppinline{std::array} declaration. The rule both adds the \cppinline{<array>} header and makes the source-code refactoring in one step.}
+    \caption{The entire rule for generating the \cppinline{std::array} declaration. The rule both adds the \cppinline{<array>} header and makes the source-code refactoring in one step.}
     \label{code:085tool_ex:Rule}
 \end{listing}
 
 As it can be seen from \cref{code:085tool_ex:Rule}, the refactoring rule is relatively simple to read, as it solely uses the methods created through this section and strings of text, which is very descriptive. This makes each line easy to reason about and transparent. The difference between the node processing step for the CStyleConverter tool as compared to the RenamingTool, is that more information has to be extracted from the bound nodes. This requires a deeper understanding of which node types contain the wanted information, and how the information is encoded in the nodes.
 
-In the renaming tool (\cref{sec:085tool:example:simple_rename}) the \cppinline{Tranformer} consumer extracted the \cppinline{Replacements} from the \cppinline{AtomicChanges} generated by the rule. This was necessary, as the tool used the \cppinline{RefactoringTool} class provided by the library. In the renaming tool, the rule only had a single change for the matches, which was quite easy to extract from the \cppinline{AtomicChanges}. In this tool, the rule adds multiple changes and it even includes the \cppinline{array} header. This added complexity to the extraction of the replacements in the consumer. 
-'
-During the development of this tool it was discovered, that there is a convenience method in the library that allows the developer to apply \cppinline{AtomicChanges} directly to the source code instead of unpacking it manually. This method will take care of all the header removals and includes them in each \cppinline{AtomicChange}. The team wanted to use this feature in the tool to reduce the complexity of the consumer, so a custom \cppinline{ClangTool} class had to be created.
+
+\subsubsection*{Consuming the changes}
+% TODO: Beskriv motivation for hvorfor vi skulle lave RefactorConsumer bedre
+
+In the renaming tool (\cref{sec:085tool:example:simple_rename}) the \cppinline{Tranformer} consumer extracted the \cppinline{Replacements} from the\\
+\cppinline{AtomicChanges} generated by the rule. This was necessary, as the tool used the \cppinline{RefactoringTool} class provided by the library. In the renaming tool, the rule only had a single change for the matches, which was quite easy to extract from the \cppinline{AtomicChanges}. In this tool, the rule adds multiple changes and it even includes the \cppinline{array} header. This added complexity to the extraction of the replacements in the consumer. 
+
+During the development of this tool it was discovered, that there is a convenience method in the library that allows the developer to apply \cppinline{AtomicChanges} directly to the source code instead of unpacking it manually. This method will take care of all the header removals and includes them in each \cppinline{AtomicChange}. The group wanted to use this feature in the tool to reduce the complexity of the consumer, so a custom \cppinline{ClangTool} class had to be created.
 
 The custom class has to work with \cppinline{AtomicChanges} instead of \cppinline{Replacements} but the overall structure of the \cppinline{runAndSave} method, which saves the changes to disk, is the same. As opposed to \cppinline{Replacement} objects,\cppinline{AtomicChange} objects already contain the file name for the change so all the changes can be inserted into a single \cppinline{std::vector}  and handled by the tool instead of the consumer. This change in semantics is what makes the consumer method simpler. 
 
@@ -187,10 +194,8 @@ auto RefactorConsumer(AtomicChanges &Changes) {
             if (!C) {
                 throw std::runtime_error("Invalid Changes! " + toString(C.takeError()));
             }
-
             Changes.reserve(Changes.size() + C.get().Changes.size());
-            std::move(C.get().Changes.begin(), C.get().Changes.end(),
-			          std::back_inserter(Changes));
+            std::move(C.get().Changes.begin(), C.get().Changes.end(), std::back_inserter(Changes));
         };
 }
     \end{cppcode}
@@ -202,11 +207,14 @@ auto RefactorConsumer(AtomicChanges &Changes) {
 
 In the previous section, a new consumer was made for the \cppinline{Transformer}. This consumer uses an external instance of \cppinline{AtomicChanges} to save the results of the tool. After all the \cppinline{AtomicChange} objects have been gathered, the changes can be applied to the source code and saved to disk - like it was done in the renaming tool. This logic has to be custom-made to use \cppinline{AtomicChange} instead of \cppinline{Replacements}. This change will be discussed here.
 
-The renaming tool calls the \cppinline{runAndSave} method on the \cppinline{RefactoringTool} class. This method first runs the specified \cppinline{FrontEndAction} to get the result of the tool. Afterwards, it creates a \cppinline{Rewriter} with sources provided to the tool. The \cppinline{Rewriter} class is an interface between the tool and the rewrite buffers - aka the OS. This \cppinline{Rewriter} will allow the tool to make source-code changes. With the created \cppinline{Rewriter} object, the \cppinline{RefactoringTool} calls the \cppinline{applyAllReplacements} and \cppinline{saveRewrittenFiles} methods. These methods will apply the \cppinline{Replacements} to the source code and then save the rewritten source to disk. It is this behaviour that needs to be reimplemented for the \cppinline{AtomicChanges}.
+The renaming tool calls the \cppinline{runAndSave} method of the \cppinline{RefactoringTool} class. This method first runs the specified \cppinline{FrontEndAction} to get the result of the tool. Afterwards, it creates a \cppinline{Rewriter} with sources provided to the tool. The \cppinline{Rewriter} class is an interface between the tool and the rewrite buffers, which is a low-level interface to the filesystem of the operating system.
+This \cppinline{Rewriter} will allow the tool to make source-code changes. With the created \cppinline{Rewriter} object, the \cppinline{RefactoringTool} calls the \cppinline{applyAllReplacements} and \cppinline{saveRewrittenFiles} methods. These methods will apply the \cppinline{Replacements} to the source code and then save the rewritten source to disk. It is this behaviour that needs to be reimplemented for the \cppinline{AtomicChanges}.
 
 The creation of the \cppinline{Rewriter} class is identical between the implementation in the library and the custom version. This is the case because the \cppinline{Rewriter} is used solely to apply the changes and not to reason about the changes. The creation of the \cppinline{Rewriter} instance has thus been excluded from this report. It can be found in the implementation of the CStyleArrayConverter on the project GitHub page. 
 
-The \cppinline{applyAllReplacements} method is where the custom tool class gets interesting. This method has to be created by hand and it needs to call the \cppinline{applyAtomicChanges} method on all the gathered \cppinline{AtomicChanges} for each filename. The \cppinline{applyAtomicChanges} method can apply changes from multiple \cppinline{AtomicChange} objects at once, but they must be changes in the same source file. This has to be checked by the developer before the method is called. This check was performed in the consumer in the RenamingTool but has to be implemented in the tool here. 
+The \cppinline{applyAllReplacements} method is where the custom tool class gets interesting. This method has to be created by hand and it needs to call the \cppinline{applyAtomicChanges} method on all the gathered \cppinline{AtomicChanges} for each filename. The \cppinline{applyAtomicChanges} method can apply changes from multiple \cppinline{AtomicChange} objects at once, but they must be changes in the same source file.
+% TODO: Don't understand sentence below, and it sounds clunky
+This has to be checked by the developer before the method is called. This check was performed in the consumer in the RenamingTool but has to be implemented in the tool here. 
 
 In order to apply all the gathered changes, the tool needs access to those changes. In the \cppinline{RefactoringTool}, the \cppinline{Replacements} container was a part of the tool instance. This part will be copied into the custom tool, so it contains an instance of the \cppinline{AtomicChanges}. 
 
@@ -223,7 +231,7 @@ bool applyAllChanges(Rewriter &Rewrite) {
     ...
 }
     \end{cppcode}
-    \caption{Code snippet that will group the collection of \cppinline{AtomicChange} objects based on the files they should change. The use of the unordered map is for performance reasons and could just as easily be a \cppinline{std::map}.}
+    \caption{Code snippet that will group the collection of \cppinline{AtomicChange} objects based on the files they should change. The use of the unordered map is for performance reasons and could also have been a \cppinline{std::map}.}
     \label{code:085tool_ex:030cstyle:SortChanges}
 \end{listing}
 
@@ -246,7 +254,6 @@ bool applyAllChanges(Rewriter &Rewrite) {
         }
 
         auto id = sm.getOrCreateFileID(Entry.get(), SrcMgr::C_User);
-
         auto code = sm.getBufferData(id);
         auto new_code = applyAtomicChanges(File, code, ChangesForFile, ApplyChangesSpec());
 

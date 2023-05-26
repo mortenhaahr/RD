@@ -8,6 +8,7 @@
 - Rename Tests to Results and provide results on running tools on existing code bases
 - Write about these deterministic tools compared to probabilistic tools (e.g. LLM)
 - Perhaps mention in discussion/future work that we could investigate the third way of implementing the enum2string tool
+- CStyle == C-style
 - We forgot to consider following scenario:
 
 ```cpp

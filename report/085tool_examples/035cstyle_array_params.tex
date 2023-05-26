@@ -1,5 +1,5 @@
 
-\section{CStyle array parameter converter}
+\section{CStyle array parameter converter} \label{sec:080:035:cstyleArrayParm}
 
 During the development of the CStyle array converter tool (\cref{sec:045tool:c_style_array}) discussed what impact the transformation of the constant arrays would have on the target project. There are multiple side effects when the entire codebase is refactored to use \cppinline{std::array}s instead of CStyle arrays. These side effects occur because CStyle arrays and \cppinline{std::array}s have different semantic meanings and definitions. For one CStyle arrays decay to pointers when used as a function parameter, while \cppinline{std::array}s are strong types that do not decay. In order to investigate the semantic implications and challenges which arise when doing the CStyle array conversion, a modification was made to the CStyle array converter tool, which makes the tool also convert function parameters into \cppinline{std::array}s.
 
@@ -11,7 +11,7 @@ The functionality described in this section is an extension of the CStyle array 
 
 \subsection{AST node matching}
 
-For this augmentation to the existing tool, a new matcher has to be created. The matcher must find all the function parameter declarations which are constant arrays. The matcher should additionally still extract the needed information like the variable declaration converter (\cref{subsec:085tool_example:030cstyle:node_matching}).
+For this augmentation of the existing tool, a new matcher has to be created. The matcher must find all the function parameter declarations which are constant arrays. The matcher should additionally still extract the needed information like the variable declaration converter (\cref{subsec:085tool_example:030cstyle:node_matching}).
 
 There is an existing matcher in the LibTooling catalogue that will match a function parameter declaration. That matcher is called \cppinline{parmVarDecl} and it will be used in this matcher instead of the \cppinline{declaratorDecl} used previously.
 

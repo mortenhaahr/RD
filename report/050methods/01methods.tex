@@ -1,12 +1,12 @@
 \chapter{Methods}
 
-As described earlier three different tools will be developed during this project. The tools are used as a progressive learning platform for exploring increasingly complex parts of the LibTooling framework. 
+As described earlier three different tools will be developed during this project. The tools are used as a progressive learning platform for exploring increasingly complex parts of the LibTooling library. 
 
-The first tool is a renaming tool, that will refactor a method with an illegal name (``MkX'') into a legal name (``MakeX''). The tool will also rename all the calls to that method in order to keep the exact same functionality. The purpose of developing this tool is to get familiar with the basics of the LibTooling framework, which will make later development easier. 
+The first tool is a renaming tool, that will refactor a method with an illegal name (``MkX'') into a legal name (``MakeX''). The tool will also rename all the calls to that method in order to keep the exact same functionality. The purpose of developing this tool is to get familiar with the basics of the LibTooling library, which will make later development easier. 
 
 The second tool is also a refactoring tool but with more complexity than the renaming tool. The purpose of the second tool is to convert traditional C-style arrays into the more modern and strongly typed \cppinline{std::array}s. This tool is more complex than the renaming tool because there is more information associated with arrays than function names. Furthermore, there are more semantic considerations which have to be taken into account when making this type of change. 
 
 The third tool will analyze the code base for enums and generate ``to\_string'' methods for each enum definition. The ``to\_string'' method will return a string representation of the named enum constants defined in the enum. In order to ensure valid source code after the tool is run, existing ``to\_string'' methods should be overwritten or updated as a part of the process. 
 This tool is comparable in complexity to the C-style converter tool but adds the complexity of code generation to the tool. 
 
-Through these three tools, a deeper understanding of the LibTooling framework and the C++ language is obtained.
+Through these three tools, a deeper understanding of the LibTooling library and the C++ language is obtained.

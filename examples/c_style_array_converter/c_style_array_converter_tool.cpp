@@ -323,7 +323,7 @@ int main(int argc, const char **argv) {
 	         cat(transformer::run(NodeOps::getVarStorage("parmDecl")),
 	             "std::array<",
 	             transformer::run(NodeOps::getArrayElemtType("parm")), ", ",
-	             transformer::run(NodeOps::getConstArraySize("parm")), "> ",
+	             transformer::run(NodeOps::getConstArraySize("parm")), ">& ",
 	             transformer::run(NodeOps::getDeclQualifier("parmDecl")),
 	             name("parmDecl")))},
 	    cat("Changed CStyle Array: ",

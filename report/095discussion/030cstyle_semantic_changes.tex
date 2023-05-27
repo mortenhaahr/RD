@@ -1,16 +1,16 @@
-% Discuss the semantic changes that were made through this CStyle array tool - focus on the calling convention to methods.
+% Discuss the semantic changes that were made through this C-style array tool - focus on the calling convention to methods.
 
 \section{Semantic considerations}
 
-In this section, some of the semantic considerations that were processed and discovered during the development of the CStyle array conversion tool will be discussed. 
+In this section, some of the semantic considerations that were processed and discovered during the development of the C-style array conversion tool will be discussed. 
 
 \subsection{Array conversions} \label{subsec:095:030:array_conversions}
 
-Converting a CStyle \cppinline{int} array into an \cppinline{std::array} is straightforward - just place the \cppinline{int} inside the template parameter list of the \cppinline{std::array}. 
+Converting a C-style \cppinline{int} array into an \cppinline{std::array} is straightforward - just place the \cppinline{int} inside the template parameter list of the \cppinline{std::array}. 
 
 \cppinline{int Array[5]} => \cppinline{std::array<int, 5> Array}
 
-A more interesting question is how to handle a CStyle array of constant integers. For this conversion, there are two possibilities. Either the entire \cppinline{std::array} has to be const or the array has to be an array of constant integers.
+A more interesting question is how to handle a C-style array of constant integers. For this conversion, there are two possibilities. Either the entire \cppinline{std::array} has to be const or the array has to be an array of constant integers.
 
 \cppinline{const int Array[5]} => \cppinline{const std::array<int, 5> Array} or \cppinline{std::array<const int, 5> Array}?
 
@@ -41,7 +41,7 @@ int main() {
 
 If the test code is passed through a C++ compiler it will show that the \cppinline{a1[0]->test()} line will fail to compile, while the other two definitions are valid. This means that \cppinline{const std::array<int*, 4>} and \cppinline{std::array<int* const, 4>} are identical except for the differences discussed earlier for the non-pointer array types. The implementation in the tool uses the \cppinline{std::array<int* const, 4>} version as it is easier to extract from the AST nodes.
 
-\subsection{Array parameter conversions}
+\subsection{Array parameter conversions}\label{subsec:095disc:arrayParm}
 % Pointer decay for methods:
 % non converted raw arrays?
 % Dynamic arrays accessed through a raw pointer?

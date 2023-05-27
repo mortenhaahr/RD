@@ -39,7 +39,7 @@ constexpr std::string_view to_string(Greetings e){
 \subsection{Difference from previous tools}
 
 The tool differentiates itself from the previous examples by being a generative tool, meaning that it inserts source code into a file.
-In contrast, the renaming tool and CStyle comparison tool were refactoring tools that would overwrite existing code lines.
+In contrast, the renaming tool and C-style comparison tool were refactoring tools that would overwrite existing code lines.
 While the differences may seem subtle, it can be more challenging to design generative tools, as the generated code should be syntactically valid as part of the code context.\\
 E.g., with the enum-to-string tool, it is necessary to determine if a function named \cppinline{to_string} with the same signature exists in the namespace. This has to be considered since the redefinition of functions is not allowed in C++.
 Because such a function can exist, a strategy for handling it must be determined. This could be solved in different ways e.g., by leaving the function untouched or overwriting it. The process of identifying the different edge cases which have to be handled can be very challenging for the tool writers. The only conceivable way of catching the edge cases is by writing tests and running the tool on existing databases. 

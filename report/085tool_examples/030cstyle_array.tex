@@ -1,15 +1,15 @@
 
-\section{CStyle array converter}\label{sec:045tool:c_style_array}
+\section{C-style array converter}\label{sec:045tool:c_style_array}
 
 The traditional way of making arrays in C is by using the subscript operator. A fixed-size C array consists of a type, a name and a constant size. The line \cppinline{int my_array[10]} will create a variable called ``my\_array'' which is a collection of 10 consecutive integers.
-In C++, this style of declaring an array is called a CStyle array.\\
-In C++11 the container \cppinline{std::array} was added to the standard library, which acts as a wrapper around the CStyle array.
-It combines the performance of a CStyle array while having the benefits of a standard container, such as knowing the size of the container and providing access to iterators \cite{cppreferenceStdArrayCppreference}.
+In C++, this style of declaring an array is called a C-style array.\\
+In C++11 the container \cppinline{std::array} was added to the standard library, which acts as a wrapper around the C-style array.
+It combines the performance of a C-style array while having the benefits of a standard container, such as knowing the size of the container and providing access to iterators \cite{cppreferenceStdArrayCppreference}.
 In C++ both ways of declaring arrays are allowed, however, \cppinline{std::array} is generally preferred, as it is considered safer since it makes bounds-checking easier.
 Bounds safety is of great concern in C++ as the language does not provide built-in mechanisms to prevent out-of-bounds errors.
 These errors are considered a serious issue, and out-of-bounds writes were ranked as the most dangerous software weakness in 2022 on the Common Weakness Enumeration list\footnote{The list ranks software weaknesses based on their commonness and impactfulness.} \cite{mitreCWE2022CWE}.
 
-The goal of this tool is to find all the constantly sized CStyle arrays in the source code and convert them into \cppinline{std::array}s.
+The goal of this tool is to find all the constantly sized C-style arrays in the source code and convert them into \cppinline{std::array}s.
 
 One of the test cases for this tool is to convert \cppinline{static const int* const const_pointer_const_array_static[2]} into \cppinline{static std::array<const int* const>, 2> const_pointer_const_array_static}. In order to achieve this, the storage (static) class and const-qualifiers of the type must be preserved through the transformation, which is a bigger challenge compared to the simple rename tool \cref{sec:085tool:example:simple_rename}.
 
@@ -19,16 +19,16 @@ Like the renaming tool \cref{sec:085tool:example:simple_rename} the customizatio
 
 \subsection{AST node matching}\label{subsec:085tool_example:030cstyle:node_matching}
 
-This tool works on CStyle arrays with a constant size so the AST matcher for that type of node must be identified.
+This tool works on C-style arrays with a constant size so the AST matcher for that type of node must be identified.
 
-A CStyle array is a type in the Clang AST. The library contains multiple matchers which match different variants of CStyle arrays. The types of CStyle arrays are: \cppinline{Array}, \cppinline{Constant}, \cppinline{DependentSized}, \cppinline{Incomplete} and \cppinline{Variable}. \\
-The \cppinline{Array} type is a base type for all the other types of CStyle arrays. The \cppinline{Constant} array type is a CStyle array with a constant size. The \cppinline{DependentSized} array is an array with a value-dependent size. The \cppinline{Incomplete} array is a CStyle array with an unspecified size. The \cppinline{Variable} array type is a CStyle array with a specified size that is not an integer constant expression.
+A C-style array is a type in the Clang AST. The library contains multiple matchers which match different variants of C-style arrays. The types of C-style arrays are: \cppinline{Array}, \cppinline{Constant}, \cppinline{DependentSized}, \cppinline{Incomplete} and \cppinline{Variable}. \\
+The \cppinline{Array} type is a base type for all the other types of C-style arrays. The \cppinline{Constant} array type is a C-style array with a constant size. The \cppinline{DependentSized} array is an array with a value-dependent size. The \cppinline{Incomplete} array is a C-style array with an unspecified size. The \cppinline{Variable} array type is a C-style array with a specified size that is not an integer constant expression.
 
-Each of the types has a corresponding matcher which allows the creator of a tool to match only the wanted types of CStyle arrays. The focus of this tool is solely on \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
+Each of the types has a corresponding matcher which allows the creator of a tool to match only the wanted types of C-style arrays. The focus of this tool is solely on \cppinline{Constant} arrays, as they are directly convertible to \cppinline{std::array}s. The same would probably also be true for the \cppinline{DependentSized} array type, but this has been left out in order to simplify the tool.
 
-The constant array type node contains the element type of the array as well as the number of elements in the array. The constant array type node does not contain the storage specifier for the type (e.g., static or extern) so that information must be bound in another way. The storage specifier is stored in the declaration of the array which is a \cppinline{VarDecl}. For this tool, the bound declaration will also make it easy to access the namespace-qualifiers for the CStyle array. 
+The constant array type node contains the element type of the array as well as the number of elements in the array. The constant array type node does not contain the storage specifier for the type (e.g., static or extern) so that information must be bound in another way. The storage specifier is stored in the declaration of the array which is a \cppinline{VarDecl}. For this tool, the bound declaration will also make it easy to access the namespace-qualifiers for the C-style array. 
 
-There is a problem however as this tool also aims to refactor the raw CStyle arrays declared inside of classes. This distinction matters for the declaration of the variables, as variables inside classes are \cppinline{FieldDecl}s and not \cppinline{VarDecl}s. For this matcher, the type of node to match must therefore be more generic than the \cppinline{VarDecl}. This can be achieved by using the \cppinline{DeclaratorDecl} matcher which matches on \cppinline{DeclaratorDecl}s, which is the common base class between \cppinline{VarDecl}s and \cppinline{FieldDecl}s.
+There is a problem however as this tool also aims to refactor the raw C-style arrays declared inside of classes. This distinction matters for the declaration of the variables, as variables inside classes are \cppinline{FieldDecl}s and not \cppinline{VarDecl}s. For this matcher, the type of node to match must therefore be more generic than the \cppinline{VarDecl}. This can be achieved by using the \cppinline{DeclaratorDecl} matcher which matches on \cppinline{DeclaratorDecl}s, which is the common base class between \cppinline{VarDecl}s and \cppinline{FieldDecl}s.
 
 The variable declaration for the arrays also contains the bounded location of the declaration in the source code. This can be easily extracted through the \cppinline{typeLoc} matcher. This information will make it easier to change the correct location in the source code in the following steps and is therefore present in the matcher.
 The complete matcher for finding constant arrays can be seen in \cref{code:085tool_ex:CSMatcher}.
@@ -42,7 +42,7 @@ auto ConstArrayFinder =
         hasTypeLoc(typeLoc().bind("arrayLoc")))
     .bind("arrayDecl");
     \end{cppcode}
-    \caption{CStyle array matcher with bindings.}
+    \caption{C-style array matcher with bindings.}
     \label{code:085tool_ex:CSMatcher}
 \end{listing}
 
@@ -54,8 +54,8 @@ As described in the previous section, there are multiple pieces of information w
 From \cref{code:085tool_ex:CSMatcher} three node types were bound. ``array'' is the type of constant array that was found, ``arrayLoc'' is the location of the constant array in the source code and ``arrayDecl'' is the entire declaration of the array.
 
 \subsubsection*{RangeSelector}
-The first thing needed in order to make the change is to extract the source code range from the nodes. The ``arrayLoc'' node, which has been bound, is a \cppinline{TypeLoc} which spans the \cppinline{[number_of_elements]} part of the CStyle array.
-This may seem a bit confusing at first, but the behaviour is due to the \cppinline{typeLoc} referring to the underlying \cppinline{ArrayTypeLoc}, i.e., the part of the source code that makes it a CStyle array.
+The first thing needed in order to make the change is to extract the source code range from the nodes. The ``arrayLoc'' node, which has been bound, is a \cppinline{TypeLoc} which spans the \cppinline{[number_of_elements]} part of the C-style array.
+This may seem a bit confusing at first, but the behaviour is due to the \cppinline{typeLoc} referring to the underlying \cppinline{ArrayTypeLoc}, i.e., the part of the source code that makes it a C-style array.
 ``arrayLoc'' can be used in conjunction with the ``arrayDecl'' node in order to get the entire source code range for the array declaration. The \cppinline{RangeSelector} API has a convenience function \cppinline{encloseNodes} which is meant for exactly this purpose.
 
 \subsubsection*{StorageClass}
@@ -150,7 +150,7 @@ With all the relevant information extracted from the bound nodes, a \cppinline{R
 
 \begin{listing}[H]
     \begin{cppcode}
-auto CStyleArrayConverterRule = makeRule(
+auto C-styleArrayConverterRule = makeRule(
     ConstArrayFinder,
     {
         addInclude("array", IncludeFormat::Angled),
@@ -172,7 +172,7 @@ auto CStyleArrayConverterRule = makeRule(
     \label{code:085tool_ex:Rule}
 \end{listing}
 
-As it can be seen from \cref{code:085tool_ex:Rule}, the refactoring rule is relatively simple to read, as it solely uses the methods created through this section and strings of text, which is very descriptive. This makes each line easy to reason about and transparent. The difference between the node processing step for the CStyleConverter tool as compared to the RenamingTool, is that more information has to be extracted from the bound nodes. This requires a deeper understanding of which node types contain the wanted information, and how the information is encoded in the nodes.
+As it can be seen from \cref{code:085tool_ex:Rule}, the refactoring rule is relatively simple to read, as it solely uses the methods created through this section and strings of text, which is very descriptive. This makes each line easy to reason about and transparent. The difference between the node processing step for the C-styleConverter tool as compared to the RenamingTool, is that more information has to be extracted from the bound nodes. This requires a deeper understanding of which node types contain the wanted information, and how the information is encoded in the nodes.
 
 
 \subsubsection*{Consuming the changes}
@@ -210,7 +210,7 @@ In the previous section, a new consumer was made for the \cppinline{Transformer}
 The renaming tool calls the \cppinline{runAndSave} method of the \cppinline{RefactoringTool} class. This method first runs the specified \cppinline{FrontEndAction} to get the result of the tool. Afterwards, it creates a \cppinline{Rewriter} with sources provided to the tool. The \cppinline{Rewriter} class is an interface between the tool and the rewrite buffers, which is a low-level interface to the filesystem of the operating system.
 This \cppinline{Rewriter} will allow the tool to make source-code changes. With the created \cppinline{Rewriter} object, the \cppinline{RefactoringTool} calls the \cppinline{applyAllReplacements} and \cppinline{saveRewrittenFiles} methods. These methods will apply the \cppinline{Replacements} to the source code and then save the rewritten source to disk. It is this behaviour that needs to be reimplemented for the \cppinline{AtomicChanges}.
 
-The creation of the \cppinline{Rewriter} class is identical between the implementation in the library and the custom version. This is the case because the \cppinline{Rewriter} is used solely to apply the changes and not to reason about the changes. The creation of the \cppinline{Rewriter} instance has thus been excluded from this report. It can be found in the implementation of the CStyleArrayConverter on the project GitHub page. 
+The creation of the \cppinline{Rewriter} class is identical between the implementation in the library and the custom version. This is the case because the \cppinline{Rewriter} is used solely to apply the changes and not to reason about the changes. The creation of the \cppinline{Rewriter} instance has thus been excluded from this report. It can be found in the implementation of the C-styleArrayConverter on the project GitHub page. 
 
 The \cppinline{applyAllReplacements} method is where the custom tool class gets interesting. This method has to be created by hand and it needs to call the \cppinline{applyAtomicChanges} method on all the gathered \cppinline{AtomicChanges} for each filename. The \cppinline{applyAtomicChanges} method can apply changes from multiple \cppinline{AtomicChange} objects at once, but they must be changes in the same source file.
 % TODO: Don't understand sentence below, and it sounds clunky

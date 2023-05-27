@@ -7,6 +7,6 @@ The first tool is a renaming tool, that will refactor a method with an illegal n
 The second tool is also a refactoring tool but with more complexity than the renaming tool. The purpose of the second tool is to convert traditional C-style arrays into the more modern and strongly typed \cppinline{std::array}s. This tool is more complex than the renaming tool because there is more information associated with arrays than function names. Furthermore, there are more semantic considerations which have to be taken into account when making this type of change. 
 
 The third tool will analyze the code base for enums and generate ``to\_string'' methods for each enum definition. The ``to\_string'' method will return a string representation of the named enum constants defined in the enum. In order to ensure valid source code after the tool is run, existing ``to\_string'' methods should be overwritten or updated as a part of the process. 
-This tool is comparable in complexity to the CStyle converter tool but adds the complexity of code generation to the tool. 
+This tool is comparable in complexity to the C-style converter tool but adds the complexity of code generation to the tool. 
 
 Through these three tools, a deeper understanding of the LibTooling framework and the C++ language is obtained.

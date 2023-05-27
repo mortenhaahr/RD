@@ -200,7 +200,7 @@ AST_MATCHER_P(NestedNameSpecifier, rec_specifies_namespace, Matcher<NamespaceDec
     \label{code:085tool:rec_specifies_namespace}
 \end{listing}
 
-\subsection{Node data processing}
+\subsection{Node data processing} \label{subsec:080dev:085example:050enum:node_processing}
 The logic for the node data processing step of the enum-to-string tool can be seen in \cref{code:085tool:enum_rule}.
 The aforementioned \cppinline{enumFinder} is used as the \textit{matcher} and the \textit{edits} is a single \cppinline{changeTo} expression.
 Inside \cppinline{changeTo} the \cppinline{RangeSelector} is determined dynamically for each match, depending on whether ``toString'' was bound. If it is bound then the \cppinline{SourceLocation} of the ``toString'' node is used, otherwise, the \cppinline{SourceLocation} right after the ``enumDecl'' node is used.

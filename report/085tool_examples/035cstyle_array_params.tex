@@ -1,13 +1,10 @@
 
 \section{CStyle array parameter converter} \label{sec:080:035:cstyleArrayParm}
 
-% TODO: Rewrite paragraph.
-% We need to convert C-style to std in function calls because different prototype.
-% We have an unhandled problem: std array does not decay to pointers, meaning we cant always pass std arrays to previous functions.
-There are multiple implications when the entire codebase is refactored to use \cppinline{std::array}s instead of CStyle arrays. These implications occur because CStyle arrays and \cppinline{std::array}s have small differences in their semantics.
-For one CStyle arrays implicitly decay to pointers when used as function parameters, while \cppinline{std::array}s are strong types that do not decay. In order to investigate the semantic implications and challenges which arise when doing the conversion, a modification was made to the tool, which makes the tool also convert function parameters into \cppinline{std::array}s.
-
-This additional transformation will show some of the considerations and challenges that will have to be considered when making the conversion over a codebase.
+So far the tool was able to rewrite variable declarations of CStyle arrays into their corresponding \cppinline{std::array} implementations. However, if the variable that was transformed is passed as an argument to a function, the resulting C++ code is invalid.
+As a result, the tool was extended to change the declaration of such functions to accept \cppinline{std::array}s\footnote{
+    A different and potentially better approach is discussed in \cref{subsec:095disc:arrayParm}
+}.
 
 \subsection{Command line parsing}
 
@@ -21,15 +18,16 @@ There is an existing matcher in the LibTooling catalogue that will match a funct
 
 The built-in matcher \cppinline{parmVarDecl} provides a way to match all parameter declarations, i.e., parameters of functions or methods. For this tool, the parameters of interest are only \cppinline{ConstantArrayType}s. However, writing such a matcher is not trivial, due to certain aspects of the language.\\
 At the lowest level of abstraction, a CStyle array is essentially a pointer to a block of contiguous memory.
-This means that when a CStyle array is used in certain contexts, it can be treated as a pointer. The concept is commonly referred to as array decaying.
+This means that when a CStyle array is used in certain contexts, it can be treated as a pointer, which is commonly referred to as array decaying.
 Clang AST uses this concept and represents CStyle array parameters as pointers instead of arrays.
 The challenge was therefore to differentiate between normal pointer types from decayed ones.\\
 Fortunately, there is a built-in matcher called \cppinline{decayedType}, which allows matching on decayed pointers.
 
-% TODO: Rewrite two paragraphs below to be more easy for reader. We had to write the matcher hasOriginalType as a decayedType can be either an array or a function. The information of the original type can be found inside AdjustedType.
-\cppinline{decayedType} can be provided with an inner matcher which further filters the nodes that are matched. The inner matcher is called with a \cppinline{AdjustedType} node, which is a type that has been implicitly adjusted based on the semantics of the language. The adjusted type contains both the adjusted type and the original type. In this case, the adjusted type is the pointer to which the array has decayed. This original type can be used to check if the decayed type was originally a constant array, which is what is needed for this tool. 
+Matching on all \cppinline{DecayedType}s, however, is too general, as it is also possible for the other array types (\cref{subsec:085tool_example:030cstyle:node_matching}) and function types to decay into pointers.
+Unfortunately, a matcher that only matches on \cppinline{DecayedType}s that were previously \cppinline{ConstantArrayType}s does not exist within the built-in libraries. It is however possible to pull the information from a node, as a \cppinline{DecayedType} can be cast to an \cppinline{AdjustedType}, which is a type that was implicitly adjusted based on the semantics of the language, i.e., due to array decay in this scenario. \cppinline{AdjustedType} contains meta-information of both the new type and the original type.
 
-No matcher in the library will ensure that the original type of an adjusted type is a constant array type so that matcher has to be implemented. Creating a custom matcher is done through helper macros in the library. There are many different helper macros, which allow the creator of the matcher to fine-tune the matcher to the exact needs. This flexibility also makes it somewhat complicated for first-time developers, as there are many options to sort through. In this case, the matcher is provided with an adjusted type node, which has to be filtered on the original type. The original type has to be compared with another type. This means that a parameter is needed for the matcher. The correct macro for this type of matcher is the \cppinline{AST_MATCHER_P} macro. This macro allows the user to specify the input node type and a single parameter which is given to the matcher. Because this matcher will compare types, the type of the input parameter is a \cppinline{Matcher<QualType>}. The signature of the matcher is shown on \cref{code:085tool_ex:035array_param:match_signiture}.
+Since \cppinline{AdjustedType} exists, it is possible to write a custom matcher that finds the original type of the node, and thereby is able to check if the node decayed from a \cppinline{ConstantArrayType}.
+Creating a custom matcher is done through helper macros in the library. There are many different helper macros, which allow the creator of the matcher to fine-tune the matcher to the exact needs. This flexibility also makes it somewhat complicated for first-time developers, as there are many options to sort through. In this case, the matcher is provided with an \cppinline{AdjustedType} node, which has to be filtered on the original type. The original type has to be compared with another type. This means that a parameter is needed for the matcher. The correct macro for this type of matcher is the \cppinline{AST_MATCHER_P} macro. This macro allows the user to specify the input node type and a single parameter which is given to the matcher. Because this matcher will compare types, the type of the input parameter is a \cppinline{Matcher<QualType>}. The signature of the matcher is shown on \cref{code:085tool_ex:035array_param:match_signiture}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -41,7 +39,7 @@ AST_MATCHER_P(AdjustedType, hasOriginalType, ast_matchers::internal::Matcher<Qua
     \label{code:085tool_ex:035array_param:match_signiture}
 \end{listing}
 
-The implementation of the matcher is quite simple. As mentioned earlier, the matcher needs to extract the original type from the AdjustedType and compare it to the type provided as the parameter of the matcher. This can be achieved with the code shown on \cref{code:085tool_ex:035array_param:match_impl}.
+The implementation of the matcher is quite simple. As mentioned earlier, the matcher needs to extract the original type from the \cppinline{AdjustedType} and compare it to the type provided as the parameter of the matcher. This can be achieved with the code shown on \cref{code:085tool_ex:035array_param:match_impl}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -51,7 +49,7 @@ return InnerType.matches(Node.getOriginalType(), Finder, Builder);
     \label{code:085tool_ex:035array_param:match_impl}
 \end{listing}
 
-The \cppinline{Finder} and \cppinline{Builder} variables are common across all matchers. The \cppinline{Finder} variable is the \cppinline{MaatchFinder} variable created by the tool, and it is responsible for calling the callbacks when a valid match has been found. The \cppinline{Builder} variable is used to bind nodes to specific names through the \cppinline{.bind(NAME)} construct used in the tools.
+The \cppinline{Finder} and \cppinline{Builder} variables are common across all matchers. The \cppinline{Finder} variable is the \cppinline{MatchFinder} variable created by the tool, and it is responsible for calling the callbacks when a valid match has been found. The \cppinline{Builder} variable is used to bind nodes to specific names through the \cppinline{.bind(NAME)} construct used in the tools.
 
 With all the building blocks in place, the CStyle array parameter matcher can be constructed. It looks similar to the variable CStyle array matcher and is therefore very expressive. The CStyle array parameter matcher can be seen on \cref{code:085tool_ex:035array_param:parm_matcher}.
 
@@ -70,7 +68,7 @@ auto ParmConstArrays = parmVarDecl(
 
 \subsection{Node data processing}
 
-This tool is a great example of the differences between extracting information through node processing as compared to filtering through matchers. The goal of this tool expansion is the same as it was for CStyle array variables, it just has to use \cppinline{ParmVarDecl}s instead of \cppinline{VarDecls}. \cppinline{ParmVarDecl}s are a specialisation of \cppinline{VarDecl}s, so all the node processing is the same for both types. Therefore the node processing can be reused for this tool expansion, and the different match filtering is all that is needed.
+The goal of this tool expansion is the same as it was for CStyle array variables, it just has to use \cppinline{ParmVarDecl}s instead of \cppinline{VarDecls}. \cppinline{ParmVarDecl}s are a specialisation of \cppinline{VarDecl}s, so all the node processing is the same for both types. Therefore the node processing can be reused for this tool expansion, and the different match filtering is all that is needed.
 
 \subsection{Handling the results}
 

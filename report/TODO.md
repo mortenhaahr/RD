@@ -33,3 +33,7 @@ namespace ns {
 - Enum-to-string tool cannot handle when definition is seperated from declaration
 - Consistency with how we refer to LibTooling classes. E.g., `parmVarDecl` is a matcher, `ParmVarDecl` is a class.
   - We should also have a description of this
+- In the parmVar discussion: Talk about how the rewriting of functions where CStyle array was previously used is quite skethcy. Especially, if the function is implemented in a seperate compilation unit. A better approach would've been to change to `func(arr.data())` and then one could write a seperate tool if function refactoring was needed.
+- In parmVarDecl discussion how we break when function takes incomplete array types (e.g. variable array sizes).
+- In parmVarDecl discussion write about the annoying example arr[4][5] and how C++ is broken since [5] is enforced but [4] is not, since [4] decays to ptr but [5] doesn't. We made it so that both are enforced.
+- In parmVarDecl discussion write about how we broke function calls with ConstantArrayTypes where the passed array is bigger than the function indicates.

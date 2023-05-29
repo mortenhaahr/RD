@@ -299,7 +299,7 @@ int main(int argc, const char **argv) {
 	        ast_matchers::hasParameter(
 	            0, ast_matchers::parmVarDecl(
 	                   ast_matchers::hasType(
-	                       ast_matchers::enumDecl(matchers::is_named()).bind(enum_decl)))
+	                       ast_matchers::enumDecl().bind(enum_decl)))
 	                   .bind(enum_parm)))
 	        .bind(to_string_method);
 

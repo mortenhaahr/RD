@@ -37,3 +37,5 @@ namespace ns {
 - In parmVarDecl discussion how we break when function takes incomplete array types (e.g. variable array sizes).
 - In parmVarDecl discussion write about the annoying example arr[4][5] and how C++ is broken since [5] is enforced but [4] is not, since [4] decays to ptr but [5] doesn't. We made it so that both are enforced.
 - In parmVarDecl discussion write about how we broke function calls with ConstantArrayTypes where the passed array is bigger than the function indicates.
+- More citations
+- (Perhaps) write something about: Purpose of the refactoring tool is to strengthen the safety guarantees the structure provides.

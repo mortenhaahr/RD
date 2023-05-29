@@ -3,6 +3,7 @@
 \section{Semantic considerations}
 In this section, some of the semantic considerations that were processed and discovered during the development of the C-style array conversion tool will be discussed.
 The C-style array tool in particular led to many discussions regarding language semantics, as the transformation is non-trivial when all potential scenarios must be considered.
+Furthermore, it is crucial for an automatic refactoring tool to handle all scenarios correctly, as introducing a bug can be difficult to spot across a large codebase and defeats the purpose of automatic refactoring.
 
 \subsection{Array conversions for constant types} \label{subsec:095:030:array_conversions}
 
@@ -22,13 +23,20 @@ For readability of the code and the error messages, the group prefers the \cppin
 However, in the implementation of the conversion tool, the std::array<const ...> version is created. This choice is made because it is easier in LibTooling to extract the entire array element type, including the const qualifier, than it is to separate the two.
 Since the difference between the two versions is so minimal the ease of development was prioritised.
 
-\subsubsection*{Pointer arrays}
+\subsubsection*{Pointer type arrays}
 Similar considerations have to be made regarding pointers but they are perhaps more interesting, as they can have multiple const qualifiers.
 They can either be pointers to constant objects, constant pointers to objects or constant pointers to constant objects (respectively \cppinline{const int*}, \cppinline{int* const} and \cppinline{const int* const}) \cite{cppreferencePointerDeclarationCppreference}.
-% TODO: You are here Morten
-Like the value arrays the three types of pointer arrays can be converted directly to \cppinline{std::array}s by moving the type into the template parameter list. E.g. \cppinline{const int*[4]} => \cppinline{std::array<const int*, 4>} and \cppinline{int* const[4]} => \cppinline{std::array<int* const, 4>}.
+Like the array of value types, arrays of pointer types can be converted directly to \cppinline{std::array}s by moving the type into the template parameter list.
+E.g., \cppinline{const int*[4]} becomes \cppinline{std::array<const int*, 4>} and \cppinline{int* const[4]} becomes \cppinline{std::array<int* const, 4>}.
 
-There is however another way to represent a constant array and that is \cppinline{const std::array<...>}. The question is then, is the const array equal to \cppinline{std::array<const int*, 4>} or \cppinline{std::array<int* const, 4>} or is it equal to both. If it is equal to both then it should not be used as that would imply that there is no way to distinguish what type of array it was meant to be. An easy way to test the equivalence between the representations is by creating a test struct with a non-const member method and trying to call it on an element through an array. This test can be seen on \cref{code:095:discussion:test_of_array_conversion_eq}.
+It is also possible to represent a constant array with a pointer type through \cppinline{const std::array<int*, N>}.
+However, this representation is tricky, as it is unclear which of the aforementioned pointer type arrays it corresponds to.
+A simple way of testing the similarity between the representations is seen in \cref{code:095:discussion:test_of_array_conversion_eq}.
+The idea behind the test is that a \cppinline{const Test*} and \cppinline{const Test* const} should not be allowed to execute the \cppinline{test} method as it is a non-const member function. However, \cppinline{Test* const} should.
+This logic can be used to infer, that if \cppinline{a0->test()} compiles, then \cppinline{const std::array<Test*, 1> a0} must be similar to \cppinline{Test* const a0[1]}.
+The results indicated that the code compiled successfully.
+This means that \cppinline{const std::array<int*, 1>} and \cppinline{std::array<int* const, 1>} are similar except for the differences discussed earlier for the value type arrays. The implementation in the tool uses the \cppinline{std::array<int* const, 1>} version as it is easier to extract from the AST nodes.
+
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -36,18 +44,14 @@ struct Test {void test(){}};
 int main() {
     Test t;
     const std::array<Test*, 1> a0 {&t};
-    std::array<const Test*, 1> a1 {&t};
-    std::array<Test* const, 1> a2 {&t};
     a0[0]->test();
-    a1[0]->test();
-    a2[0]->test();
 }
     \end{cppcode}
-    \caption{Test of conversion equivalence.}
+    \caption{Test of conversion similarity
+    .}
     \label{code:095:discussion:test_of_array_conversion_eq}
 \end{listing}
 
-If the test code is passed through a C++ compiler it will show that the \cppinline{a1[0]->test()} line will fail to compile, while the other two definitions are valid. This means that \cppinline{const std::array<int*, 4>} and \cppinline{std::array<int* const, 4>} are identical except for the differences discussed earlier for the non-pointer array types. The implementation in the tool uses the \cppinline{std::array<int* const, 4>} version as it is easier to extract from the AST nodes.
 
 \subsection{Array parameter conversions}\label{subsec:095disc:arrayParm}
 % Pointer decay for methods:

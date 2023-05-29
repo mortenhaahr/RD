@@ -1,36 +1,36 @@
 \chapter{Project description}
 This chapter provides an overall description of the project including a brief overview of the main technologies used.
 
-The overall topic of the R\&D project is source code generation, which derives from automatic programming. Automatic programming can be defined as the automation of some part of the programming process \cite{barrAutomaticProgramming1982}. The process consists of parsing a specification as an input to the automatic programming system which outputs a program \cite{novakjr.CS394PAutomatic}.\\
-An example of an automatic programming system could be a compiler, where the specification is a program written in the desired programming language. Another example could be the tools provided by Visual Paradigm that translates the contents of UML diagrams to source code of different programming languages \cite{visualparadigmUMLCodeGeneration}.\\
-The motivation behind automatic programming is that it allows the developer to express themselves more abstractly through specifications, allowing for smaller, more understandable and less error-prone programs \cite{novakjr.CS394PAutomatic}.
+The overall topic of the R\&D project is source-code generation, which derives from automatic programming. Automatic programming can be defined as the automation of some part of the programming process \cite{barrAutomaticProgramming1982}. The process consists of parsing a specification as an input to the automatic programming system which outputs a program \cite{novakjr.CS394PAutomatic}.\\
+An example of an automatic programming system could be a compiler, where the specification is a program written in the desired programming language and the output is an executable program. Another example could be the tools provided by Visual Paradigm that translates the contents of UML diagrams to source code of different programming languages \cite{visualparadigmUMLCodeGeneration}.\\
+The motivation behind automatic programming is that it allows developers to express themselves more abstractly through specifications, allowing for smaller, more understandable and less error-prone programs \cite{novakjr.CS394PAutomatic}.
 
-Source-code generation can be considered a specific area of automatic programming where the output of the automatic programming system is source code. In contrast, the output of an automatic programming tool can also be a finished executable program. This implies that the results of a source-code generation tool must be passed onto another automatic programming tool in order to be executed.\\
-The motivation for source-code generation is similar to that of automatic programming, however, it is intending to refine the specification.
+Source-code generation can be considered a specific area of automatic programming where the output of the automatic programming system is source code. 
+The motivation for source-code generation is similar to that of automatic programming, however, the output is a refined or generated specification rather than an executable program.
 
-This R\&D project tries to investigate the usage of the library LibTooling for writing C++ source-code generation tools. The project involves the writing of three separate tools of increasing complexity that address some issues related to writing source-code generation tools through LibTooling.
+This R\&D project investigates the usage of the library LibTooling for writing C++ source-code generation tools. The project involves the writing of three separate tools with increasing complexity that addresses some issues related to writing source-code generation tools through LibTooling.
 
 The first tool is a simple renaming tool that can be used to rename functions and their matching invocations.\\
-The second tool is a refactoring tool that transforms arrays written using C-style notation into the more modern and secure \cppinline{std::array} notation. \\
-The third tool generates a \cppinline{to_string} function for each enum declaration inside the program, i.e., a function that takes an instance of an enum as an argument and returns a string corresponding to the name of the value of the enum. If an existing \cppinline{to_string} function exists, e.g., in another namespace, the tool overwrites it instead.
+The second tool is also a refactoring tool which transforms arrays specified using the C-style notation into the more modern and secure \cppinline{std::array} notation. \\
+The third tool generates a \cppinline{to_string} function for each enum declaration inside the program, i.e., a function that takes an instance of that enum as an argument and returns a string corresponding to the name of the value of the enum. If an existing \cppinline{to_string} function exists, e.g., in another namespace, the tool updates it in place instead.
 
 \section{Technology overview}
-The LLVM project is a collection of compiler and toolchain technologies that can be used to build compiler-frontends for programming languages and compiler-backends for different instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
-One project built with LLVM is Clang which is a compiler-frontend for languages in the C language family including C, C++, Objective C and many others \cite{llvmClangLanguageFamily}.\\
-The library LibTooling was built as part of the Clang project to allow developers to build standalone tools based on Clang \cite{llvmLibToolingClang17}. It provides the benefit of using the AST generated by Clang and thereby guaranteeing that the parsed source code is valid. Furthermore, the AST is very fine-grained allowing for a detailed analysis of the provided source code.
-
+The LLVM project is a collection of compiler and toolchain technologies that can be used to build compiler-frontends for programming languages and compiler-backends for multiple instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
+One project created alongside LLVM is Clang. Clang is a compiler-frontend for languages in the C language family including C, C++, Objective C and many others \cite{llvmClangLanguageFamily}.\\
+The LibTooling library was created as part of the Clang project and it allows developers to build standalone tools based on Clang \cite{llvmLibToolingClang17}. 
+The library provides access to Clang's AST parser and LLVM's command line parsing. As C++ is a complex programming language with context-sensitive grammar, having access to an existing parser through the library is a great starting point for tool development \cite{ProblemsPainsParsing}. The tool developer APIs hook into the compilation pipeline after the parsing step, which guarantees that the tool is run on valid ASTs. Furthermore, Clangs AST is very fine-grained allowing for a detailed analysis of the provided source code, which is very helpful when developing tools. The full compilation pipeline of Clang and LLVM can be seen on \cref{fig:040des:llvmToolchainOverview}. The structure of a tool created with LibTooling can be seen on \cref{fig:040des:clangToolingOverview}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\textwidth]{figs/040des/placeholder.png}
-    \caption{LLVM and Clang overview}
+    \includegraphics[width=0.9\textwidth]{figs/040des/compilation_overview.png}
+    \caption{Overview of the Clang and LLVM compilation pipeline. The yellow blocks in the diagram are in/outputs of the pipeline. The green box is the Clang front end. The blue box is the conversion step between the Clang front end and the LLVM back end. The red box is the LLVM optimizations. The purple box represents the tasks of the backend for the specific instruction set architecture.}
     \label{fig:040des:llvmToolchainOverview}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\textwidth]{figs/040des/placeholder.png}
-    \caption{Clang and LibTooling overview}
+    \includegraphics[width=0.4\textwidth]{figs/040des/clang_tool_pipeline.png}
+    \caption{An overview of the Clang frontend and the LibTooling library. The green and orange boxes are identical to the boxes in \cref{fig:040des:llvmToolchainOverview}. The yellow box is the filtering/semantic analysis of the AST for the given tool. The tree splits into two to show that multiple different tools can use the library. On the left with the red box is the structure of the popular Clang-tidy tool\cite{ClangTidyExtraClang}. On the right in blue is the structure of a custom tool as developed in this project. The two grey boxes indicate outputs from the tools.}
     \label{fig:040des:clangToolingOverview}
 \end{figure}
 
@@ -38,6 +38,6 @@ The library LibTooling was built as part of the Clang project to allow developer
 \section{Project delimitations}
 While LibTooling supports writing tools for programming languages in the C language family, the project is delimited to focusing on tools written for C++.
 
-In many cases, it may be beneficial to integrate the tools developed with LibTooling into the development flow by providing it as a Clang plugin. The project will not go into this topic but the tools built should be portable as Clang plugins.
+In many cases, it may be beneficial to integrate the tools developed with LibTooling into the development flow by providing it as a Clang plugin. The project will not go into this topic but the tools built should be portable as Clang plugins \cite{ClangPluginsClang}.
 
-At last, LibTooling provides several APIs for writing standalone tools. The APIs look different but essentially they provide the same functionality. They can all be used to write tools which use the Clang AST but do so following different software patterns. A few examples of the APIs are RecursiveASTVisitor, LibASTMatchers and Clang Transformer \cite{HowWriteRecursiveASTVisitor,llvmWelcomeClangDocumentation}. The project will not go into detail about these APIs but instead, focus on using Clang Transformer.
+At last, LibTooling provides several APIs for writing standalone tools. The APIs look different but essentially they provide the same functionality. They can all be used to write tools which use the Clang AST but do so following different software patterns. A few examples of the APIs are RecursiveASTVisitor, LibASTMatchers and Clang Transformer \cite{HowWriteRecursiveASTVisitor,llvmWelcomeClangDocumentation}. This project will focus on the Clang Transformer API and will therefore not go into detail about these APIs \cite{ClangTransformerTutoriala}.

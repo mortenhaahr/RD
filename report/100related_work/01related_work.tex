@@ -1,1 +1,15 @@
 \chapter{Related work}
+
+The focus of this project has been on deterministic source-code generation using user-provided source-code as the specification. This is, however, not the only methodology of source-code generation. 
+
+One example of a different approach to source-code generation comes from microcontroller manufacturers like STMicroelectronics \cite{STMicroelectronicsOurTechnology}. These manufacturers have created tools like STM32CubeIDE which allows the programmer to add startup and configuration code to the code base through a check-box tool \cite{STM32CubeDevelopmentSoftware}. The configuration code is pre-written by the manufacturers and it is used to specify the state of the peripherals inside the microcontrollers. \\
+This type of source-code generation is also deterministic, but it uses a pre-defined set of possible combinations as the specification instead of the users's code. This limited specification set provides a higher level of abstraction over the generated configuration and can also serve as documentation for the generated configuration. 
+
+
+Another approach to automated computing and source-code generation is using probability. 
+This type of source-code generation is often employed to generate code from natural language (NL) descriptions of problems, as deterministic models are impractical. 
+These probabilistic models allow the generation of programs from descriptions in more familiar languages like English \cite{alonStructuralLanguageModels2020}.
+Research in probabilistic automatic programming has been ongoing for many years and the newest tools in the field are actively being used by the public \cite{WhatChatGPTWhy, johnmaedaChoosingLLMModel2023}.
+This type of model usually consists of some kind of neural network which is used to process the NL description. 
+The result of the processing can then, in some cases, be used as a specification for a deterministic model as shown in \cite{yinSyntacticNeuralModel2017}. 
+A probabilistic model can be very useful for source-code generation, even though it is non-deterministic \cite{chenEvaluatingLargeLanguage2021}.

@@ -4,7 +4,7 @@ The goal of this tool is to rename all functions in the provided source code tha
 
 \subsection{Command line parsing}
 
-In order to make this tool as simple as possible, the name of the method to rename and the new name have been fixed in the code. Therefore the Command line parsing element of the tool will use only the general options available for all LibTooling tools. The common command line options can be used by making a \cppinline{CommonOptionsParser}. The way to create such an object can be seen on \cref{code:080dev:common_cli_options}.
+In order to make this tool as simple as possible, the name of the method to rename and the new name have been fixed in the code. Therefore the command line parsing element of the tool will use only the general options available for all LibTooling tools. The common command line options can be used by making a \cppinline{CommonOptionsParser}. The way to create such an object can be seen on \cref{code:080dev:common_cli_options}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -82,7 +82,7 @@ The transformer needs a consumer that saves the generated source code edits to a
 
 \begin{listing}[H]
     \begin{cppcode}
-auto consumer(std::map<std::string, Replacements> fileReplacements) {
+auto consumer(std::map<std::string, Replacements> &fileReplacements) {
     return [=](Expected<TransformerResult<void>> Result) {
         if (not Result) {
             throw "Error generating changes: " + toString(Result.takeError());
@@ -110,7 +110,7 @@ The consumer and the rules can be used to create the transformer as shown in \cr
     \begin{cppcode}
 Transformer transformer(renameFunctionAndInvocations, consumer(externalFilesToReplaceMap));
     \end{cppcode}
-    \caption{A rule that both renames the function declaration and the invocations of that function. The externalFilesToReplaceMap variable passed to the consumer will be discussed later.}
+    \caption{A rule that both renames the function declaration and the invocations of that function. The \cppinline{externalFilesToReplaceMap} variable passed to the consumer will be discussed later.}
     \label{code:080dev:tool_example:transformer}
 \end{listing}
 
@@ -118,7 +118,7 @@ Transformer transformer(renameFunctionAndInvocations, consumer(externalFilesToRe
 
 This part of the tool is responsible for the creation of the actual tool and saving the results to disk. 
 
-The goal of this tool is a form of refactoring and Clang already has a tool for refactoring called clang-refactor. This tool is also created through LibTooling and it defines a class called \cppinline{RefactoringTool} which extends the \cppinline{ClangTool} class. The \cppinline{RefactoringTool} adds a way to save \cppinline{Replacements} to disk. The changes that should be saved to disk are located in a \cppinline{std::map<std::string, Replacements>} map which is contained inside of the \cppinline{RefactoringTool}. The \cppinline{RefactoringTool} implementation already contains all the needed functionality to finish the rename refactoring tool. All that remains is therefore to create the tool and invoke it, which is shown in \cref{code:080dev:tool_example:tool_invocation}.
+The goal of this tool is a form of refactoring and Clang already has a tool for refactoring called clang-refactor. This tool is also created through LibTooling and it defines a class called \cppinline{RefactoringTool} which extends the \cppinline{ClangTool} class. The \cppinline{RefactoringTool} adds a way to save \cppinline{Replacements} to disk. The changes that should be saved to disk are located in a \cppinline{std::map<std::string, Replacements>} which is contained inside of the \cppinline{RefactoringTool}. The \cppinline{RefactoringTool} implementation already contains all the needed functionality to finish the rename refactoring tool. All that remains is therefore to create the tool and invoke it, which is shown in \cref{code:080dev:tool_example:tool_invocation}.
 
 
 \begin{listing}[H]
@@ -142,8 +142,8 @@ transformer.registerMatchers(&finder);
 return Tool.runAndSave(newFrontendActionFactory(&finder).get());
 } // end main
     \end{cppcode}
-    \caption{This code snippet shows the creation of a \cppinline{RefactoringTool} called `Tool'. The construction of the tool requires the source code that was passed through the command line. The internal map in the Tool is used as input to the transformer, as seen in \cref{code:080dev:tool_example:transformer}.}
+    \caption{This code snippet shows the creation of a \cppinline{RefactoringTool} called ``Tool''. The construction of the tool requires the source code that was passed through the command line. The internal map in the tool is used as input to the transformer, as seen in \cref{code:080dev:tool_example:transformer}.}
     \label{code:080dev:tool_example:tool_invocation}
 \end{listing}
 
-As can be seen in \cref{code:080dev:tool_example:tool_invocation} the tool combines the results from the other parts of the tool structure into the final tool. The tool is then invocated by the \cppinline{runAndSave} method call, which invokes the tool and saves the results to disk afterwards. 
+As can be seen in \cref{code:080dev:tool_example:tool_invocation} the tool combines the results from the other parts of the tool structure into the final tool. The tool is then invoced by the \cppinline{runAndSave} method, which runs the tool and saves the results to disk afterwards. 

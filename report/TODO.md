@@ -18,6 +18,7 @@ namespace ns {
 ```
   - Mikkel's tool will overwrite both methods
   - Morten's tool will overwrite the first occasion (global namespace to_string)
+- Discuss the impact of the two enum-to-string implementation strategies.
 - Consistency with subsection, subsection*, etc.
 - Consistency with cppinline, ``code'', etc.
 - Enum-to-string tool cannot handle when definition is seperated from declaration - discussion/future work (future work Done)

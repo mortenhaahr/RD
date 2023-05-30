@@ -2,7 +2,7 @@
 \section{C-style array parameter converter} \label{sec:080:035:cstyleArrayParm}
 
 So far the tool was able to rewrite variable declarations of C-style arrays into their corresponding \cppinline{std::array} implementations. However, if the variable that was transformed is passed as an argument to a function, the resulting C++ code is invalid.
-As a result, the tool was extended to change the declaration of such functions to accept \cppinline{std::array}s\footnote{
+As a result, the tool should be extended to change the declaration of such functions to accept \cppinline{std::array}s\footnote{
     A different and potentially better approach is discussed in \cref{subsec:095disc:arrayParm}
 }.
 

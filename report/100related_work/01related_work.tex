@@ -1,11 +1,19 @@
 \chapter{Related work}
 
-
 The focus of this project has been on deterministic source-code generation using user-provided source-code as the specification. This is, however, not the only methodology of source-code generation.
 
-One example of a different approach to source-code generation comes from microcontroller manufacturers like STMicroelectronics \cite{stmSTMicroelectronicsOurTechnology}. These manufacturers have created tools like STM32CubeIDE which allows the programmer to add startup and configuration code to the code base through a check-box tool \cite{stmSTM32CubeDevelopmentSoftware}. The configuration code is pre-written by the manufacturers and it is used to specify the state of the peripherals inside the microcontrollers.\\
-This type of source-code generation is also deterministic, but it uses a pre-defined set of possible combinations as the specification instead of the users' code. This limited specification set provides a higher level of abstraction over the generated configuration and can also serve as documentation for the generated configuration. 
+Similar work was made in \cite{sadovnikovUsingClangSource} which provides a presentation on how LibTooling can be used as a deterministic source-code generation tool.
+However, \cite{sadovnikovUsingClangSource} provides a more superficial overview of this, and focuses on the general challenges associated with developing such tools.
+For instance, the work in \cite{sadovnikovUsingClangSource} implements a simpler enum-to-string tool\footnote{
+    To compare, their matcher simply consists of \cppinline{enumDecl(isExpansionInMainFile())}.
+} where existing ``to\_string'' functions are not taken into consideration, meaning that the tool can not be used consecutively on a code base.
 
+One example of a different approach to source-code generation comes from microcontroller manufacturers such as STMicroelectronics \cite{stmSTMicroelectronicsOurTechnology}.
+Tools such as STM32CubeIDE enable developers to conveniently add startup and configuration code to their codebases through a user-friendly checkbox tool \cite{stmSTM32CubeDevelopmentSoftware}.
+The configuration code is pre-written by the manufacturers and it is used to specify the state of the peripherals inside the microcontrollers.\\
+This form of source-code generation is also deterministic but raises the level of abstraction by defining a predetermined set of options. These options serve as the specification instead of the users' code.
+The limited set of options simplifies the number of edge cases that must be considered but at the cost of flexibility.
+In contrast, the tools developed during this project are generic allowing them to be used with any C++ specification, as demonstrated with the JSON library \cite{lohmannJSONModern2022} in \cref{chp:090:tests}.
 
 Another approach to automated computing and source-code generation is using probability. 
 This type of source-code generation is often employed to generate code from natural language (NL) descriptions of problems, as deterministic models are impractical. 

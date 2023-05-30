@@ -1,6 +1,6 @@
 \section{Build environment} \label{sec:080dev:build_env}
 
-The documentation for writing applications using LibTooling such as \cite{MatchingClangAST, ClangTransformerTutorial} mainly concerns writing tools as part of the LLVM project repository. While this is good for contributing to the project, it is not ideal for version control and developing stand-alone projects.
+The documentation for writing applications using LibTooling such as \cite{clangMatchingClangAST, clangClangTransformerTutorial} mainly concerns writing tools as part of the LLVM project repository. While this is good for contributing to the project, it is not ideal for version control and developing stand-alone projects.
 It was necessary to create a build environment that allowed for out-of-tree builds which utilize LibTooling. A similar attempt was made in \cite{kasmisClangOutoftreeBuild2023} but the project was abandoned in 2020 and LLVM has since moved from a distributed repository architecture to a monolithic one making most of \cite{kasmisClangOutoftreeBuild2023} obsolete.
 The following section is dedicated to describing the important decisions made related to the build environment.
 
@@ -42,4 +42,4 @@ In the future, it may be desirable to explore a solution using the LLVM command 
 
 \subsection{Configuring the target project}
 
-The target project on which source files the tool will be run should generate a compilation database. A compilation database contains information about the compilation commands invoked to build each source file. This file is used by LibTooling to detect the compile commands and include files necessary to generate the correct AST for the compilation unit.\cite{JSONCompilationDatabase} Tools like CMake can auto-generate the compilation commands at configuration time. When using CMake the compilation database generation can be enabled by inserting \cmakeinline{set(CMAKE_EXPORT_COMPILE_COMMANDS 1)} in the CMakeLists.txt file.
+The target project on which source files the tool will be run should generate a compilation database. A compilation database contains information about the compilation commands invoked to build each source file. This file is used by LibTooling to detect the compile commands and include files necessary to generate the correct AST for the compilation unit.\cite{clangJSONCompilationDatabase} Tools like CMake can auto-generate the compilation commands at configuration time. When using CMake the compilation database generation can be enabled by inserting \cmakeinline{set(CMAKE_EXPORT_COMPILE_COMMANDS 1)} in the CMakeLists.txt file.

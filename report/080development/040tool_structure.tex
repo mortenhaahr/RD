@@ -1,6 +1,6 @@
 \section{Tool structure} \label{sec:080dev:tool_structure}
 
-Through inspection of existing LibTooling tools, such as \cite{llvmExternalClangExamples} and \cite{llvmLLVMCompilerInfrastructure2023}, and the development of tools for the R\&D project, a common structure for LibTooling tools has been identified. The structure can be used as a way of categorizing the different parts of such tools and can be seen below.
+Through inspection of existing LibTooling tools, such as \cite{clangExternalClangExamples} and \cite{llvmLLVMCompilerInfrastructure2023}, and the development of tools for the R\&D project, a common structure for LibTooling tools has been identified. The structure can be used as a way of categorizing the different parts of such tools and can be seen below.
 
 \begin{itemize}
     \item Command line parsing
@@ -22,16 +22,16 @@ The \textbf{Handling the results} part of the tool structure is where the matchi
 
 A good way of configuring the behaviour of a tool is through command line arguments. All LibTooling tools come with some common options which are always present, e.g., the option to parse a list of source files.
 
-The way to add command line options to a tool is through the command line library provided by LLVM. This library makes it very easy to add new commands and provide help text for the options. A great example of how to use the library can be found in the implementation of ClangFormat \cite{llvmClangFormatClangFormat2023}, where they have multiple options with different types and default values.
+The way to add command line options to a tool is through the command line library provided by LLVM. This library makes it very easy to add new commands and provide help text for the options. A great example of how to use the library can be found in the implementation of ClangFormat \cite{clangClangFormatClangFormat2023}, where they have multiple options with different types and default values.
 
 \subsection{AST node matching} \label{subsec:080dev:ASTNodeMatching}
 
-The next step in working with LibTooling is to find the AST that is relevant for the tool through matching and binding. This is a very important part of the tool development as it defines what kind of information is available for the later stages of the tool. If the wrong AST is matched or the wrong nodes are bound, the later processing can become unnecessarily complex and complicated. Furthermore, the task of matching the AST can also be very difficult as there are currently more than 700 different matchers available as part of the library \cite{llvmASTMatcherReference}. 
+The next step in working with LibTooling is to find the AST that is relevant for the tool through matching and binding. This is a very important part of the tool development as it defines what kind of information is available for the later stages of the tool. If the wrong AST is matched or the wrong nodes are bound, the later processing can become unnecessarily complex and complicated. Furthermore, the task of matching the AST can also be very difficult as there are currently more than 700 different matchers available as part of the library \cite{clangASTMatcherReference}. 
 
 A proposed way of matching the AST is by writing or finding a very simple example of the code that should be matched upon. The entire AST for that file can be printed through Clang by invoking:\\ \bashinline{clang -cc1 -ast-dump input_file}. 
 This command will print all the AST information in the input file to the console, which can then be analyzed manually for the wanted nodes/patterns.
 
-When an AST node has been identified as interesting to the tool it should be matched, which is typically done by using the predefined matchers of LibTooling \cite{llvmASTMatcherReference}.
+When an AST node has been identified as interesting to the tool it should be matched, which is typically done by using the predefined matchers of LibTooling \cite{clangASTMatcherReference}.
 It is also possible to write custom matchers, which can be very powerful when the standard matchers are lacking. An example of such could be if one wishes to recursively traverse the declaration context, which was the case in one of the implementations of the enum tool.
 However, most the time the builtin matchers will be sufficient and they should therefore be the initial place to look when matching the AST.
 
@@ -39,7 +39,7 @@ However, most the time the builtin matchers will be sufficient and they should t
 LibTooling defines three different basic categories of ``Matchers'' available to the users: Node Matchers, Narrowing Matchers and Traversal Matchers.
 The Node Matchers are the most general matchers and matches specific types of AST Nodes, e.g., \cppinline{enumDecl} and \cppinline{constantArrayType}. A subset of the Node Matchers are also bindable, meaning that they can be bound to an identifier and processed in the later stages of the tool.
 The Narrowing Matchers can be used to filter nodes that fulfil certain requirements, e.g. \cppinline{hasName} and \cppinline{isClass}. It also contains logical expressions such as \cppinline{allOf},\cppinline{anyOf} and \cppinline{unless}.
-The Traversal Matchers can be used to traverse the node with its parents or children and thereby specify and bind to certain relations of subnodes. Examples of Traversal Matchers are \cppinline{hasDescendant}, \cppinline{specifiesType} \cite{llvmASTMatcherReference}.
+The Traversal Matchers can be used to traverse the node with its parents or children and thereby specify and bind to certain relations of subnodes. Examples of Traversal Matchers are \cppinline{hasDescendant}, \cppinline{specifiesType} \cite{clangASTMatcherReference}.
 
 When composing a matcher, i.e., combining several matchers, one typically starts by identifying the overall node type that wishes to be matched. This will be the outermost Node Matcher and in most cases, this should be bound.
 A combination of narrowing matchers and traversal matchers can then be used to filter the matches depending on the information the tool needs.

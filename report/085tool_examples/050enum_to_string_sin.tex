@@ -78,7 +78,7 @@ The behaviour of the line is to find an enum declaration with an enum constant d
     Note that this also filters out empty enum declarations which are uninteresting in terms of having a \cppinline{to_string} function.
 } and then backtrack from the enum constant declaration in order to bind the original enum declaration. This logic allows the enum declaration to be bound before running the ``to\_string'' matcher.
 
-Line 4 in \cref{code:085tool:sin_enum_finder} fixes a bug that was found when running the tool on an external project, i.e., the JSON \cite{Lohmann22}.
+Line 4 in \cref{code:085tool:sin_enum_finder} fixes a bug that was found when running the tool on an external project, i.e., the JSON \cite{lohmannJSONModern2022}.
 Before this line was introduced, the tool was unable to handle unnamed enums
 \footnote{
     Unnamed enums were mainly used in C++ before \cppinline{constexpr} was introduced, for defining compile-time evaluated constants for metaprogramming usages.

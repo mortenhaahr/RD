@@ -16,9 +16,9 @@ The third tool generates a \cppinline{to_string} function for each enum declarat
 
 \section{Technology overview}
 The LLVM project is a collection of compiler and toolchain technologies that can be used to build compiler-frontends for programming languages and compiler-backends for multiple instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
-One project created alongside LLVM is Clang. Clang is a compiler-frontend for languages in the C language family including C, C++, Objective C and many others \cite{llvmClangLanguageFamily}.\\
+One project created alongside LLVM is Clang. Clang is a compiler-frontend for languages in the C language family including C, C++, Objective C and many others \cite{clangClangLanguageFamily}.\\
 The LibTooling library was created as part of the Clang project and it allows developers to build standalone tools based on Clang \cite{llvmLibToolingClang17}. 
-The library provides access to Clang's AST parser and LLVM's command line parsing. As C++ is a complex programming language with context-sensitive grammar, having access to an existing parser through the library is a great starting point for tool development \cite{ProblemsPainsParsing}. The tool developer APIs hook into the compilation pipeline after the parsing step, which guarantees that the tool is run on valid ASTs. Furthermore, Clangs AST is very fine-grained allowing for a detailed analysis of the provided source code, which is very helpful when developing tools \cite{IntroductionClangAST}. The full compilation pipeline of Clang and LLVM can be seen on \cref{fig:040des:llvmToolchainOverview}. The structure of a tool created with LibTooling can be seen on \cref{fig:040des:clangToolingOverview}.
+The library provides access to Clang's AST parser and LLVM's command line parsing. As C++ is a complex programming language with context-sensitive grammar, having access to an existing parser through the library is a great starting point for tool development \cite{ProblemsPainsParsing}. The tool developer APIs hook into the compilation pipeline after the parsing step, which guarantees that the tool is run on valid ASTs. Furthermore, Clangs AST is very fine-grained allowing for a detailed analysis of the provided source code, which is very helpful when developing tools \cite{clangIntroductionClangAST}. The full compilation pipeline of Clang and LLVM can be seen on \cref{fig:040des:llvmToolchainOverview}. The structure of a tool created with LibTooling can be seen on \cref{fig:040des:clangToolingOverview}.
 
 \begin{figure}[H]
     \centering
@@ -30,7 +30,7 @@ The library provides access to Clang's AST parser and LLVM's command line parsin
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.4\textwidth]{figs/040des/clang_tool_pipeline.png}
-    \caption{An overview of the Clang frontend and the LibTooling library. The green and orange boxes are identical to the boxes in \cref{fig:040des:llvmToolchainOverview}. The yellow box is the filtering/semantic analysis of the AST for the given tool. The tree splits into two to show that multiple different tools can use the library. On the left with the red box is the structure of the popular Clang-tidy tool\cite{ClangTidyExtraClang}. On the right in blue is the structure of a custom tool as developed in this project. The two grey boxes indicate outputs from the tools.}
+    \caption{An overview of the Clang frontend and the LibTooling library. The green and orange boxes are identical to the boxes in \cref{fig:040des:llvmToolchainOverview}. The yellow box is the filtering/semantic analysis of the AST for the given tool. The tree splits into two to show that multiple different tools can use the library. On the left with the red box is the structure of the popular Clang-tidy tool\cite{clangClangTidyExtraClang}. On the right in blue is the structure of a custom tool as developed in this project. The two grey boxes indicate outputs from the tools.}
     \label{fig:040des:clangToolingOverview}
 \end{figure}
 
@@ -38,6 +38,6 @@ The library provides access to Clang's AST parser and LLVM's command line parsin
 \section{Project delimitations}
 While LibTooling supports writing tools for programming languages in the C language family, the project is delimited to focusing on tools written for C++.
 
-In many cases, it may be beneficial to integrate the tools developed with LibTooling into the development flow by providing it as a Clang plugin. The project will not go into this topic but the tools built should be portable as Clang plugins \cite{ClangPluginsClang}.
+In many cases, it may be beneficial to integrate the tools developed with LibTooling into the development flow by providing it as a Clang plugin. The project will not go into this topic but the tools built should be portable as Clang plugins \cite{clangClangPluginsClang}.
 
-At last, LibTooling provides several APIs for writing standalone tools. The APIs look different but essentially they provide the same functionality. They can all be used to write tools which use the Clang AST but do so following different software patterns. A few examples of the APIs are RecursiveASTVisitor, LibASTMatchers and Clang Transformer \cite{HowWriteRecursiveASTVisitor,llvmWelcomeClangDocumentation}. This project will focus on the Clang Transformer API and will therefore not go into detail about these APIs \cite{ClangTransformerTutoriala}.
+At last, LibTooling provides several APIs for writing standalone tools. The APIs look different but essentially they provide the same functionality. They can all be used to write tools which use the Clang AST but do so following different software patterns. A few examples of the APIs are RecursiveASTVisitor, LibASTMatchers and Clang Transformer \cite{clangHowWriteRecursiveASTVisitor,clangWelcomeClangDocumentation}. This project will focus on the Clang Transformer API and will therefore not go into detail about these APIs \cite{clangClangTransformerTutorial}.

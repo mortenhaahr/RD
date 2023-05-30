@@ -29,3 +29,5 @@ namespace ns {
 - In parmVarDecl discussion write about how we broke function calls with ConstantArrayTypes where the passed array is bigger than the function indicates.
 - More citations
 - (Perhaps) write something about: Purpose of the refactoring tool is to strengthen the safety guarantees the structure provides.
+- Fix Zotero citations with no author (for the reference list)
+- Which enum-to-string tool was best?

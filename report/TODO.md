@@ -32,3 +32,4 @@ namespace ns {
 - (Perhaps) write something about: Purpose of the refactoring tool is to strengthen the safety guarantees the structure provides.
 - Fix Zotero citations with no author (for the reference list)
 - Which enum-to-string tool was best?
+- Mikkel: Review related work

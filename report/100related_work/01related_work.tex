@@ -1,12 +1,17 @@
 \chapter{Related work}
 
-The focus of this project has been on deterministic source-code generation using user-provided source-code as the specification. This is, however, not the only methodology of source-code generation.
+The focus of this project has been on deterministic source-code generation using user-provided source-code as the specification. This is, however, not the only methodology of source-code generation.\\
+This chapter is structured by first comparing the project with another source-code generation project developed using LibTooling.
+A comparison is then made to another type of deterministic source-code generation tool that takes a different approach with a smaller set of possible inputs.
+Finally, the project is compared to probabilistic source-code generation tools.
 
-Similar work was made in \cite{sadovnikovUsingClangSource} which provides a presentation on how LibTooling can be used as a deterministic source-code generation tool.
-However, \cite{sadovnikovUsingClangSource} provides a more superficial overview of this, and focuses on the general challenges associated with developing such tools.
-For instance, the work in \cite{sadovnikovUsingClangSource} implements a simpler enum-to-string tool\footnote{
+At the 2017 ACCU conference, Sadovnik presented his work on how LibTooling can be used as a deterministic source-code generation tool \cite{sadovnikovUsingClangSource}.
+The presentation provides a conceptual overview of the general challenges and possibilities associated with building such tools. I.e., the goal is not to showcase a finished tool that could be used by the public.
+As an example, Sadovnik presents a simpler enum-to-string tool\footnote{
     To compare, their matcher simply consists of \cppinline{enumDecl(isExpansionInMainFile())}.
-} where existing ``to\_string'' functions are not taken into consideration, meaning that the tool can not be used consecutively on a code base.
+} where existing ``to\_string'' functions are not taken into consideration.
+This shortcoming has the effect of not allowing consecutive runs of the tool on the same codebase, as it would append multiple ``to\_string'' functions to the specification.
+This project resolves these limitations.
 
 One example of a different approach to source-code generation comes from microcontroller manufacturers such as STMicroelectronics \cite{stmSTMicroelectronicsOurTechnology}.
 Tools such as STM32CubeIDE enable developers to conveniently add startup and configuration code to their codebases through a user-friendly checkbox tool \cite{stmSTM32CubeDevelopmentSoftware}.
@@ -23,7 +28,7 @@ This type of source-code generation is often employed to generate code from natu
 descriptions of problems, as deterministic models can be impractical \cite{alonStructuralLanguageModels2020}.
 Research on probabilistic automatic programming has been ongoing for years and the newest tools in the field are actively being used by the public \cite{WhatChatGPTWhy, johnmaedaChoosingLLMModel2023}.
 This type of model usually consists of some kind of neural network which is used to process the specification. 
-The result of the processing can then, in some cases, be used as a specification for a deterministic model as shown in \cite{yinSyntacticNeuralModel2017}.\\
+The result of the processing can then, in some cases, be used as a specification for a deterministic model as shown by Yin and Neubig \cite{yinSyntacticNeuralModel2017}.\\
 The distinction between deterministic and probabilistic tools lies in their approach to transformation. Deterministic tools strictly adhere to a predefined set of rules and only execute those specific transformations. Consequently, deterministic tools may not be able to handle all types of inputs or prompts.
 In contrast, probabilistic tools operate based on probabilities and strive to respond to all inputs, although the quality of the responses may vary.\\
 As a result, deterministic tools may be more suitable to deploy in a completely automated environment where precise and reliable transformations are required.

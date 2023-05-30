@@ -1,7 +1,4 @@
 - Write somewhere (not necessarily in this file) other attempts of using LibTooling for source-code generation
-- Write something about how our techniques easily can be applied for static analysis as well
-  - Instead of generating code simply report it e.g. as a warning
-  - Write it somewhere as a sidecomment
 - Write about these deterministic tools compared to probabilistic tools (e.g. LLM)
 - Perhaps mention in discussion/future work that we could investigate the third way of implementing the enum2string tool
 - We forgot to consider following scenario - discussion enum-to-string:

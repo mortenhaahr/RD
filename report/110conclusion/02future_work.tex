@@ -1,6 +1,16 @@
 \section{Future work}
 
+In order to fully explore the different tool structures, the third concieved implementation strategy for the enum-to-string tool (\cref{code:085tool:pseudo_enum3}) could be explored. 
+This third version could then be compared to the two versions developed for this project in order to determine which strategy is easiest to work with. %Not happy about the ending of this sentence.
 
 % Not handled (evt future work): What about enum definitions in header files? Place the to_sting method in the header or in a .cpp file?
+After the development for this project was finished, some edge cases were discovered for the enum-to-string tool implementations. 
+One of the unhandled edge cases is as follows:
+If an enum definitions is located in the header file, then the tool will look for ``to\_string'' function implementations in that header file only and not all the provided .cpp files. 
+This can lead to the generation of invalid source-code as multiple definitions of the ``to\_string'' function exist.
+Another limitation of the implemented tools is that they do not handle the difference between a function definition and a function declaration.
+This limitation can also lead to invalid source-code generation. 
+In order to use the enum-to-string tool in a development environment these edge cases should be handled.
 
-% Evt Write about the enum parameter converter part. 
+
+% Evt Write about the CStyle parameter converter part. 

@@ -33,3 +33,5 @@ namespace ns {
 - Fix Zotero citations with no author (for the reference list)
 - Which enum-to-string tool was best?
 - Mikkel: Review related work
+
+-Discuss line 94 in 040tool_structure

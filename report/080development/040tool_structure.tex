@@ -36,10 +36,11 @@ It is also possible to write custom matchers, which can be very powerful when th
 However, most the time the builtin matchers will be sufficient and they should therefore be the initial place to look when matching the AST.
 
 %TODO: write about custom matchers
-LibTooling defines three different basic categories of ``Matchers'' available to the users: Node Matchers, Narrowing Matchers and Traversal Matchers.
-The Node Matchers are the most general matchers and matches specific types of AST Nodes, e.g., \cppinline{enumDecl} and \cppinline{constantArrayType}. A subset of the Node Matchers are also bindable, meaning that they can be bound to an identifier and processed in the later stages of the tool.
-The Narrowing Matchers can be used to filter nodes that fulfil certain requirements, e.g. \cppinline{hasName} and \cppinline{isClass}. It also contains logical expressions such as \cppinline{allOf},\cppinline{anyOf} and \cppinline{unless}.
-The Traversal Matchers can be used to traverse the node with its parents or children and thereby specify and bind to certain relations of subnodes. Examples of Traversal Matchers are \cppinline{hasDescendant}, \cppinline{specifiesType} \cite{clangASTMatcherReference}.
+LibTooling defines three different basic categories of ``Matchers'' available to the users: Node matchers, Narrowing matchers and Traversal matchers.
+The Node matchers are the most general matchers and matches specific types of AST Nodes, e.g., \cppinline{enumDecl} and \cppinline{constantArrayType}. A subset of the Node matchers are also bindable, meaning that they can be bound to an identifier and processed in the later stages of the tool.
+The Narrowing matchers can be used to filter nodes that fulfil certain requirements, e.g. \cppinline{hasName} and \cppinline{isClass}. It also contains logical expressions such as \cppinline{allOf},\cppinline{anyOf} and \cppinline{unless}.
+The Traversal matchers can be used to traverse between the AST nodes in order to identify the relationships between nodes.
+Examples of Traversal matchers are \cppinline{hasDescendant} and \cppinline{specifiesType} \cite{clangASTMatcherReference}.
 
 When composing a matcher, i.e., combining several matchers, one typically starts by identifying the overall node type that wishes to be matched. This will be the outermost Node Matcher and in most cases, this should be bound.
 A combination of narrowing matchers and traversal matchers can then be used to filter the matches depending on the information the tool needs.

@@ -2,8 +2,8 @@
 
 There are few differences between the multi-step and single-step enum-to-string tools and they are all in either the matching or the node processing steps. However, the command line and result handling are identical between the two tool types.
 
-The structure of the tool, as shown in \cref{code:085tool:pseudo_enum2}, is to first find, log and update all the existing ``to\_string'' methods and secondly to generate ``to\_string'' methods for the rest of the enum declarations.
-This will be done with two \cppinline{ClangTool}s that are executed in succession. These are respectively denoted the ``to\_string'' and the enum declaration tools. The rest of the section is structured by consecutively describing the relevant parts of each tool.
+The structure of the tool, as shown in \cref{code:085tool:pseudo_enum2}, is to first find, log and update all the existing ``to\_string'' functions and secondly to generate ``to\_string'' funstions for the rest of the enum declarations.
+This will be done with two \cppinline{ClangTool}s that are executed in succession. These are respectively denoted the ``to\_string'' and the ``enum declaration'' tools. The rest of the section is structured by consecutively describing the relevant parts of each tool.
 
 \subsection{AST node matching -- ``to\_string'' tool}
 In the multi-step version, there is no longer a need to recursively traverse the declaration context through \cppinline{matchers::has_rec_decl_context(...)}.
@@ -26,8 +26,8 @@ auto to_string_matcher = functionDecl(
 \end{listing}
 
 \subsection{Node data processing -- ``to\_string'' tool}
-The node data processing needed to update the existing ``to\_string'' functions is similar to how it was done in the single-step tool.
-However, the ``to\_string'' tool also needs to log which \cppinline{EnumDecl}s were used as parameter in the updated ``to\_string'' functions, for the second part of the multi-step tool.
+The node data processing in this tool needs to update the existing ``to\_string'' functions similarly to how it was done in the single-step tool.
+The tool also needs to log which \cppinline{EnumDecl}s were used as parameters in the updated functions, as this is needed for the second part of the multi-step tool.
 Two challenges were identified regarding this: How to log an \cppinline{EnumDecl} and how to use the logged declarations for filtering.
 
 Logging a declaration consists of recording data from the node and saving it for later usage.
@@ -40,7 +40,7 @@ Due to the decision of using \cppinline{hasAnyName}, the fully qualified names h
 This can be done through a stencil, which takes the id as well as a vector, for the names, as parameters.
 The fully qualified name can be extracted from any \cppinline{NamedDecl} with the method\\
 \cppinline{getQualifiedNameAsString} and then inserted into the vector. 
-The implementation of the function can be seen on \cref{code:085tool:060enum:tool1_node_processing}.
+The implementation of the \cppinline{addNodeQualNameToCollection} function can be seen on \cref{code:085tool:060enum:tool1_node_processing}.
 
 \begin{listing}[H]
   \begin{cppcode}
@@ -65,8 +65,8 @@ The node matching for the enum declaration part of the tool is similar to the si
 When working with LibTooling, utilizing a narrowing matcher is often the simplest approach to implementing a node filter.
 By looking through the reference of the built-in matchers, the  \cppinline{hasAnyName} matcher was discovered.
 This matcher compares the name of a \cppinline{NamedDecl}\footnote{\cppinline{ValueDecl}s, such as an \cppinline{EnumDecl}, all inherit from the \cppinline{NamedDecl} class.} to a vector of names and returns true if the name matches any of the specified names.
-Since the desired behaviour is the opposite, the matcher \cppinline{unless} can be used to logically invert the expression.
-The availability of \cppinline{hasAnyName} ultimately led to the decision of using the fully qualified name of the \cppinline{EnumDecl}s as the identifier.
+Since the desired behaviour is the opposite, the \cppinline{unless} matcher can be used to logically invert the expression.
+The existence of the \cppinline{hasAnyName} matcher ultimately led to the decision of using the fully qualified name of the \cppinline{EnumDecl}s as the identifier.
 
 The matcher for the enum declaration tool can be seen in \cref{code:085tool:060enum:tool2_matcher}, with most of it being reused from the single-step tool.
 
@@ -83,9 +83,10 @@ auto find_other_enums = enumDecl(
 \end{listing}
 
 It is important to note that due to the internal workings of the \cppinline{hasAnyName} matcher, the first tool needs to be executed before instantiating this matcher.
-This is because \cppinline{hasAnyName} creates a copy of the names in the collection at instantiation time.
-Another thing to note about the \cppinline{hasAnyName}, is that it has two modes that define its behaviour.
-If none of the names in the provided collection contains ``::'', then the matcher will do a non-qualified check on the AST. If however, any of the names contain the ``::'' string, then the matcher will use a fully qualified name check. In this tool, the fully qualified should be used in all cases, and this is the reason for the addition of the ``::'' on line 4 of \cref{code:085tool:060enum:tool1_node_processing}.
+This is because the \cppinline{hasAnyName} matcher creates a copy of the names in the collection at instantiation time.
+Another thing to note about the \cppinline{hasAnyName} matcher, is that it has two modes.
+If none of the names in the provided collection contains the string ``::'', then the matcher will do a non-qualified check on the AST. If however, any of the names contain the ``::'' string, then the matcher will use a fully qualified name check. In this tool, the fully qualified should be used in all cases in order to differentiate namespaces. 
+This is the reason for the addition of the ``::'' on line 4 of \cref{code:085tool:060enum:tool1_node_processing}.
 
 \subsection{Node data processing -- enum declaration tool}
 

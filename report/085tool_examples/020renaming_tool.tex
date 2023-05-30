@@ -1,6 +1,6 @@
 \section{Simple rename refactoring tool} \label{sec:085tool:example:simple_rename}
 
-The goal of this tool is to rename all functions in the provided source code that has the name ``MkX'' into ``MakeX''. The tool should both rename the function declaration and the locations where it is called. The code in this section has been mostly stripped of the namespace specifiers in order to simplify the code.
+The goal of this tool is to rename all functions in the provided source-code that has the name ``MkX'' into ``MakeX''. The tool should both rename the function declaration and the locations where it is called. The code in this section has been mostly stripped of the namespace specifiers in order to simplify the code.
 
 \subsection{Command line parsing}
 
@@ -66,7 +66,7 @@ auto renameInvocationsRule = makeRule(invocations, changeTo(cat("MakeX")))
     \label{code:080dev:tool_example:rename:invocation}
 \end{listing}
 
-The two rules specified here are closely coupled as running just one of the rules would result in invalid source code. There is a way to group rules into a single rule and it is called \cppinline{applyFirst}. This method creates a set of rules and applies the first rule that matches a given node. That means that there is an ordering to \cppinline{applyFirst}. This ordering can be ignored for independent rules, like the two specified in this section, and in that case, it will simply create a disjunction between the rules. The combined rule can be seen on \cref{code:080dev:tool_example:rename:both}.
+The two rules specified here are closely coupled as running just one of the rules would result in invalid source-code. There is a way to group rules into a single rule and it is called \cppinline{applyFirst}. This method creates a set of rules and applies the first rule that matches a given node. That means that there is an ordering to \cppinline{applyFirst}. This ordering can be ignored for independent rules, like the two specified in this section, and in that case, it will simply create a disjunction between the rules. The combined rule can be seen on \cref{code:080dev:tool_example:rename:both}.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -76,9 +76,9 @@ auto renameFunctionAndInvocations = applyFirst({renameFunctionRule, renameInvoca
     \label{code:080dev:tool_example:rename:both}
 \end{listing}
 
-The rules required for the simple renaming tool have been specified, but in order to extract the source code changes specified by the rules they have to be coupled with a transformer. The transformer is described in detail in \cref{sec:080dev:tool_structure}.
+The rules required for the simple renaming tool have been specified, but in order to extract the source-code changes specified by the rules they have to be coupled with a transformer. The transformer is described in detail in \cref{sec:080dev:tool_structure}.
 
-The transformer needs a consumer that saves the generated source code edits to an external variable. The consumer callback receives an expected array of \cppinline{AtomicChange} objects which in turn contain the \cppinline{Replacements} in the actual source code. The consumer shown in \cref{code:080dev:tool_example:consumer} extracts the \cppinline{Replacements} from the \cppinline{AtomicChange}s and saves them in a map variable that is defined externally.
+The transformer needs a consumer that saves the generated source-code edits to an external variable. The consumer callback receives an expected array of \cppinline{AtomicChange} objects which in turn contain the \cppinline{Replacements} in the actual source-code. The consumer shown in \cref{code:080dev:tool_example:consumer} extracts the \cppinline{Replacements} from the \cppinline{AtomicChange}s and saves them in a map variable that is defined externally.
 
 \begin{listing}[H]
     \begin{cppcode}
@@ -100,7 +100,7 @@ auto consumer(std::map<std::string, Replacements> &fileReplacements) {
     };
 }
     \end{cppcode}
-    \caption{A transformer consumer that saves all the generated source code edits to an external map by filename.}
+    \caption{A transformer consumer that saves all the generated source-code edits to an external map by filename.}
     \label{code:080dev:tool_example:consumer}
 \end{listing}
 
@@ -142,7 +142,7 @@ transformer.registerMatchers(&finder);
 return Tool.runAndSave(newFrontendActionFactory(&finder).get());
 } // end main
     \end{cppcode}
-    \caption{This code snippet shows the creation of a \cppinline{RefactoringTool} called ``Tool''. The construction of the tool requires the source code that was passed through the command line. The internal map in the tool is used as input to the transformer, as seen in \cref{code:080dev:tool_example:transformer}.}
+    \caption{This code snippet shows the creation of a \cppinline{RefactoringTool} called ``Tool''. The construction of the tool requires the source-code that was passed through the command line. The internal map in the tool is used as input to the transformer, as seen in \cref{code:080dev:tool_example:transformer}.}
     \label{code:080dev:tool_example:tool_invocation}
 \end{listing}
 

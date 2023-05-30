@@ -15,10 +15,16 @@ This form of source-code generation is also deterministic but raises the level o
 The limited set of options simplifies the number of edge cases that must be considered but at the cost of flexibility.
 In contrast, the tools developed during this project are generic allowing them to be used with any C++ specification, as demonstrated with the JSON library \cite{lohmannJSONModern2022} in \cref{chp:090:tests}.
 
-Another approach to automated computing and source-code generation is using probability. 
-This type of source-code generation is often employed to generate code from natural language (NL) descriptions of problems, as deterministic models are impractical. 
-These probabilistic models allow the generation of programs from descriptions in more familiar languages like English \cite{alonStructuralLanguageModels2020}.
-Research in probabilistic automatic programming has been ongoing for many years and the newest tools in the field are actively being used by the public \cite{WhatChatGPTWhy, johnmaedaChoosingLLMModel2023}.
-This type of model usually consists of some kind of neural network which is used to process the NL description. 
-The result of the processing can then, in some cases, be used as a specification for a deterministic model as shown in \cite{yinSyntacticNeuralModel2017}. 
+Another approach to automatic programming and source-code generation is to use tools that are based on a probabilistic model.
 A probabilistic model can be very useful for source-code generation, even though it is non-deterministic \cite{chenEvaluatingLargeLanguage2021}.
+This type of source-code generation is often employed to generate code from natural language (NL)\footnote{
+    An example of a NL could be English.
+}
+descriptions of problems, as deterministic models can be impractical \cite{alonStructuralLanguageModels2020}.
+Research on probabilistic automatic programming has been ongoing for years and the newest tools in the field are actively being used by the public \cite{WhatChatGPTWhy, johnmaedaChoosingLLMModel2023}.
+This type of model usually consists of some kind of neural network which is used to process the specification. 
+The result of the processing can then, in some cases, be used as a specification for a deterministic model as shown in \cite{yinSyntacticNeuralModel2017}.\\
+The distinction between deterministic and probabilistic tools lies in their approach to transformation. Deterministic tools strictly adhere to a predefined set of rules and only execute those specific transformations. Consequently, deterministic tools may not be able to handle all types of inputs or prompts.
+In contrast, probabilistic tools operate based on probabilities and strive to respond to all inputs, although the quality of the responses may vary.\\
+As a result, deterministic tools may be more suitable to deploy in a completely automated environment where precise and reliable transformations are required.
+On the contrary, probabilistic models may be more suitable for assisting humans in the development process, where their flexibility and ability to handle a wide range of inputs can be valuable.

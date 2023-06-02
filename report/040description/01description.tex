@@ -47,7 +47,7 @@ A few examples of the APIs are RecursiveASTVisitor, LibASTMatchers and Clang Tra
 \section{Methods}
 As described earlier three different tools were developed during the project. The tools are used as a progressive learning platform for exploring increasingly complex parts of the LibTooling library. 
 
-The first tool is a renaming tool, that will refactor a method with an illegal name (``MkX'') into a legal name (``MakeX''). The tool will also rename all the calls to that method in order to keep the exact same functionality. The purpose of developing this tool is to get familiar with the basics of the LibTooling library, which will make later development easier. 
+The first tool is a renaming tool, that will refactor a method with an illegal name (``MkX'') into a legal name (``MakeX''). The tool will also rename all the calls to that method in order to keep the same functionality. The purpose of developing this tool is to get familiar with the basics of the LibTooling library, which will make later development easier. 
 
 The second tool is also a refactoring tool but with more complexity than the renaming tool. The purpose of the second tool is to convert traditional C-style arrays into the more modern and strongly typed \cppinline{std::array}s. This tool is more complex than the renaming tool because there is more information associated with arrays than function names. Furthermore, there are more semantic considerations which have to be taken into account when making this type of change.
 Developing this tool brings insight into the challenges related to automatically refactoring more complex declarations.

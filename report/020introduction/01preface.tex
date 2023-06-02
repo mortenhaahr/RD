@@ -1,2 +1,25 @@
 \chapter{Introduction}
-\section{Preface}
+
+The C++ programming language has been around for many years and is one of the most used programming languages in the world \cite{nexttechnologyprofessionalsMostPopularProgramming2022}.
+C++ is a general-purpose programming language which allows the programmer full access to the underlying memory in the system. 
+For this reason, it is used heavily in systems- and embedded programming. \cite{adminWhereUsedIndustry2021}
+Huge projects, like Clang and Folly, have been created in C++ \cite{clangClangLanguageFamily, facebookFollyFacebookOpensource2023}.
+These huge projects have to be maintained and updated over time in order to ensure they stay relevant and provide better safety for their users. 
+Updating and maintaining these projects is a gigantic endeavour, as there are millions of lines of code to check and update.
+These tasks either require a team of experienced coders and reviewers or they require the use of automatic tools.
+This research and development (R\&D) project will explore how the LibTooling library, developed by Clang, can be used for C++ source-code generation.
+
+LLVM is a collection of compiler and toolchain technologies which is used to develop both compiler frontends for different programming languages and compiler backends for different instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
+Clang is a C-family frontend to the LLVM project, which means that it can compile C, C++, Objective C and many more C-like programming languages \cite{clangClangLanguageFamily}.
+The Clang team has developed a library called LibTooling, which can be used to access the abstract syntax tree (AST) representation of the provided source-code. 
+Having access to the AST allows developers to do semantic analysis and allows for the creation of sophisticated tools.
+
+In this project, three different tools will be created with the LibTooling library. The tools will explore how Clang represents C++ source-code through its AST and how to extract information from the nodes. The tools will also dive into the semantic considerations which have to be made when developing tools that refactor/generate source-code. The three tools which will be developed during this project are:
+
+\begin{enumerate}
+    \item A function renaming tool
+    \item A C-style array\footnote{A C-style array is the classic C-style of writing arrays, e.g., \cppinline{int array[10]}} to \cppinline{std::array} converter tool
+    \item A to-string function generator tool for enums
+\end{enumerate}
+
+Tools like the ones developed during this project are what allow developers to keep codebases secure and up to date.

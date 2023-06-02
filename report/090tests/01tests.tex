@@ -44,7 +44,7 @@ The tools were invoked once on the JSON library and the results can be seen in \
 Overall, the results of both test scenarios were quite surprising.\\
 The results from \cref{tab:090tests:simple} indicate that the multi-step tool was more than 11 times faster than the single-step tool when running on the simple test file. It is expected that this difference is due to the recursive matchers being ineffective.\\
 The results from \cref{tab:090tests:json} were perhaps even more surprising, as they showed that there was only a $5.28\%$ difference\footnote{
-    Calculated with $\frac{|268.609-254.786|}{(268.609+254.786)/2}$
+    Calculated with $\frac{|268.609-254.786|}{(268.609+254.786)/2}$.
 } between the two tools when running on the JSON library.
 The group's current hypothesis is, that it is due to the parsing of the AST as the file is so large.
 An attempt was made to validate this hypothesis by profiling the tools. However, the profiling process proved challenging as it was difficult to differentiate the application code from the library code.

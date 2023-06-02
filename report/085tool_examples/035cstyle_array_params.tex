@@ -3,7 +3,7 @@
 
 So far the tool was able to rewrite variable declarations of C-style arrays into their corresponding \cppinline{std::array} implementations. However, if the variable that was transformed is passed as an argument to a function, the resulting C++ code is invalid.
 As a result, the tool should be extended to change the declaration of such functions to accept \cppinline{std::array}s\footnote{
-    A different and potentially better approach is discussed in \cref{subsec:095disc:arrayParm}
+    A different and potentially better approach is discussed in \cref{subsec:095disc:arrayParm}.
 }.
 
 \subsection{Command line parsing}
@@ -68,7 +68,7 @@ auto ParmConstArrays = parmVarDecl(
 
 \subsection{Node data processing}
 
-The goal of this tool expansion is the same as it was for C-style array variables, it just has to use \cppinline{ParmVarDecl}s instead of \cppinline{VarDecls}. \cppinline{ParmVarDecl}s are a specialisation of \cppinline{VarDecl}s, so all the node processing is the same for both types. Therefore the node processing can be reused for this tool expansion, and the different match filtering is all that is needed\footnote{The source-code for the converted \cppinline{std::array} parameter should be a reference, which means that a single ``\&'' was added to the generated text}.
+The goal of this tool expansion is the same as it was for C-style array variables, it just has to use \cppinline{ParmVarDecl}s instead of \cppinline{VarDecls}. \cppinline{ParmVarDecl}s are a specialisation of \cppinline{VarDecl}s, so all the node processing is the same for both types. Therefore the node processing can be reused for this tool expansion, and the different match filtering is all that is needed\footnote{The source-code for the converted \cppinline{std::array} parameter should be a reference, which means that a single ``\&'' was added to the generated text.}.
 
 \subsection{Handling the results}
 

@@ -20,7 +20,7 @@ The difference between the two approaches is that the non-const member functions
 They are technically available to the other version, but calling them will result in a compile-time error as the functions will attempt to modify the values of the \cppinline{const int}s.
 As a result, the main distinction for the programmer lies in the type of compile-time error that occurs and the readability of the code.\\
 For readability of the code and the error messages, the group prefers the \cppinline{const std::array<..>} representation.
-However, in the implementation of the conversion tool, the std::array<const ...> version is created. This choice is made because it is easier in LibTooling to extract the entire array element type, including the const qualifier, than it is to separate the two.
+However, in the implementation of the conversion tool, the std::array<const ...> version is created. This choice is made because it is easier in LibTooling to extract the entire array element type, including the const qualifier than it is to separate the two.
 Since the difference between the two versions is so minimal the ease of development was prioritised.
 
 \subsubsection*{Pointer type arrays}
@@ -34,7 +34,7 @@ However, this representation is tricky, as it is unclear which of the aforementi
 A simple way of testing the similarity between the representations is seen in \cref{code:095:discussion:test_of_array_conversion_eq}.
 The idea behind the test is that a \cppinline{const Test*} and \cppinline{const Test* const} should not be allowed to execute the \cppinline{test} method as it is a non-const member function. However, \cppinline{Test* const} should.
 This logic can be used to infer, that if \cppinline{a0->test()} compiles, then \cppinline{const std::array<Test*, 1> a0} must be similar to \cppinline{Test* const a0[1]}.
-The results indicated that the code compiled successfully.
+The results indicated that the code compiles successfully.
 This means that \cppinline{const std::array<int*, 1>} and \cppinline{std::array<int* const, 1>} are similar except for the differences discussed earlier for the value type arrays. The implementation in the tool uses the \cppinline{std::array<int* const, 1>} version as it is easier to extract from the AST nodes.
 
 

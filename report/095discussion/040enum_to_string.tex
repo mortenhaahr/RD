@@ -1,5 +1,48 @@
-\section{Differences between the enum-to-string tools}
+\section{The two versions of the enum-to-string tool}
 
 % Write about the scenario described in the todo.
 
+\subsection{A difference between the versions}
+After testing the performance of the different implementations of the enum-to-string tool, a scenario in which they differ was identified. The scenario is shown in \cref{code:095disc:040enum:divergent_scenario}. In the scenario, two implementations of the ``to\_string'' function for the \cppinline{Desserts} enum already exist. They are implemented in two different namespaces, which means that they form a valid specification.
+
+\begin{listing}[H]
+    \begin{cppcode}
+enum class Desserts{Cake};
+std::string_view to_string(Desserts e){}
+namespace debug {
+    std::string_view to_string(Desserts e){}
+}
+    \end{cppcode}
+    \caption{A scenario where the output of the two implementations of the enum-to-string tools diverge.}
+    \label{code:095disc:040enum:divergent_scenario}
+  \end{listing}
+
+The single-step version of the tool will only update the ``to\_string'' function on line 2, while the multi-step version will update both functions.
+This difference stems from the implementation of the two versions.\\
+The single-step version of the enum-to-string tool will traverse from the declaration of the enum to the outer namespace, where it will then look for an implementation of the ``to\_string'' function for the given enum.\\
+The multi-step version, however, will find all the ``to\_string'' functions and update them. The filtering of known \cppinline{EnumDecl}s only happens when generating new ``to\_string'' functions.
+
+This subtle but important difference between the two tools gives rise to a discussion about which strategy is the preferred approach. In the scenario, there are two implementations of the same function\footnote{In this case the two implementations are completely identical.}, which are placed in different namespaces. 
+
+One could argue that having two identical functions is a form of code duplication, which should be avoided. 
+However, this scenario could very well occur in real code bases, where one of the functions could be placed in e.g., the \cppinline{debug} namespace, and have some extra debugging code as compared to the non-debug version. In a case like this, an automatic update of both methods could be undesirable. \\
+On the other hand, there might also be code bases, where the functions were accidentally created in two different namespaces. In this case, the two functions are probably used different places in the code base and therefore, should have the same behaviour (or one should be deleted).\\
+The ``optimal'' solutions to the two scenarios described above differ on a case-by-case basis. Therefore the developers of a tool must either decide how this scenario should be handled or let the users of the tool choose for themselves.
+
+Both tools can be changed in order to behave identically in the proposed scenario. For the single-step tool, the \cppinline{hasDescendant} matcher used for the traversal could be switched for the \cppinline{forEachDescendant} matcher. This matcher will create a match for each descendant which matches the specification and thereby update both functions.\\
+For the multi-step tool to stop after matching the first of the two functions, a custom matcher would have to be created. The custom matcher would have to dynamically check if a ``to\_string'' function for the specified \cppinline{EnumDecl} has been identified previously. If another ``to\_string'' function has been found the matcher can return \cppinline{false} - thereby creating a match on the second function definition.
+
+
+\subsection{The impact of the implementation strategies}
 % Write about the impact of the implementation strategies.
+% Compare the implementation strategies
+
+Throughout this project, it was shown that there are multiple ways to implement the same tool. In this project two of the proposed three implementation versions were used to develop the enum-to-string tool. 
+
+As described in \cref{sec:085dev:060en_mul:mul_step} most of the matcher and node data processing could be reused between the two implementations. The big difference between the two strategies was in the traversal of the AST, in the single-step version, and the logging of the found ``to\_string'' functions, in the multi-step version.
+
+The group found that it was easier to develop the multi-step tool than the single-step tool.
+The group also found that it is easier to reason about the multi-step version, as the logic of that version is more modular and straightforward. 
+This modular logic might also have had an impact on the group's perception of the multi-step version being easier to develop.\\
+Other groups have also used the multi-step approach to tool development as is shown by Bloomberg \cite{bloombergClangmetatoolFrameworkReusing2023}. This suggests that the multi-step approach is the better strategy to use. This is further supported by the fact, that there are no built-in matchers for recursively traversing up the AST. \\
+Furthermore, the multi-step version turned out to be faster (\cref{chp:090:tests}) than the single-step version.

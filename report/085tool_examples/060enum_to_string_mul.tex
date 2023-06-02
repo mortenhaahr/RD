@@ -1,8 +1,8 @@
-\section{Enum to string -- multiple steps}
+\section{Enum to string -- multiple steps}\label{sec:085dev:060en_mul:mul_step}
 
 There are few differences between the multi-step and single-step enum-to-string tools and they are all in either the matching or the node processing steps. However, the command line and result handling are identical between the two tool types.
 
-The structure of the tool, as shown in \cref{code:085tool:pseudo_enum2}, is to first find, log and update all the existing ``to\_string'' functions and secondly to generate ``to\_string'' funstions for the rest of the enum declarations.
+The structure of the tool, as shown in \cref{code:085tool:pseudo_enum2}, is to first find, log and update all the existing ``to\_string'' functions and secondly to generate ``to\_string'' functions for the rest of the enum declarations.
 This will be done with two \cppinline{ClangTool}s that are executed in succession. These are respectively denoted the ``to\_string'' and the ``enum declaration'' tools. The rest of the section is structured by consecutively describing the relevant parts of each tool.
 
 \subsection{AST node matching -- ``to\_string'' tool}

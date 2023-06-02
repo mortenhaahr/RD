@@ -1,5 +1,6 @@
 
 - Consistency with subsection, subsection*, etc.
+- Consistency of footnote endings (. or no .) 
 
 - In the parmVar discussion: Talk about how the rewriting of functions where CStyle array was previously used is quite skethcy. Especially, if the function is implemented in a seperate compilation unit. A better approach would've been to change to `func(arr.data())` and then one could write a seperate tool if function refactoring was needed.
 - In parmVarDecl discussion how we break when function takes incomplete array types (e.g. variable array sizes).
@@ -7,8 +8,6 @@
 - In parmVarDecl discussion write about how we broke function calls with ConstantArrayTypes where the passed array is bigger than the function indicates.
 
 - (Perhaps) write something about: Purpose of the refactoring tool is to strengthen the safety guarantees the structure provides.
-
-- Check for ref in std::array parms
 
 - Introduction
 - Abstract

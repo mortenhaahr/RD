@@ -54,10 +54,32 @@ int main() {
 
 
 \subsection{Array parameter conversions}\label{subsec:095disc:arrayParm}
-% Pointer decay for methods:
-% non converted raw arrays?
-% Dynamic arrays accessed through a raw pointer?
-% Other container types? vectors or lists?
-% Const array element types?
-% What about the call sites?
+In \cref{sec:080:035:cstyleArrayParm}, the C-style array converter was augmented to transform functions taking constantly sized C-style arrays as parameters into functions that accept \cppinline{std::array}s.
+While the initial transformation of converting C-style array parameters to \cppinline{std::array}s may appear reasonable, further examination reveals that it is a considerably more intricate process.
+This complexity arises due to the diverse ways in which C-style array parameters can be used within the language.
+An incomplete list of examples of how these differ can be seen below. A lot of this is related to pointer decay (\cref{subsec:085tool:ast_matching}).
+\vspace*{-0.75em}
+\begin{enumerate}
+    \item The size of the C-style array parameter is not enforced, meaning that differently sized C-style arrays can be passed to the function\footnote{
+        Passing smaller-sized C-style arrays will cause out-of-bounds errors, assuming the function accesses every element of the array.
+    }.
+    \item C-style array parameters can be incomplete, i.e., the size can be unspecified.
+    \item C-style arrays can be passed to functions expecting pointers as parameters.
+\end{enumerate}
+\vspace*{-0.75em}
+A tool that correctly transforms C-style array parameters would need to take these edge cases into account, which the implementation from \cref{sec:080:035:cstyleArrayParm} does not.
+Consequently, using the tool may result in making the C++ specification invalid, resulting in compilation errors.\\
+It is important to note that many of these usages of C-style array parameters are discouraged in modern C++ due to their inherent insecurity. These patterns often align with the motivations behind utilizing \cppinline{std::array} instead.
 
+An alternative approach could have been to limit the scope of the tool's objectives.
+Rather than attempting to refactor the functions themselves, the tool could have opted to pass the \cppinline{std::array}s by their underlying pointers using the \cppinline{data()} method.
+This approach would eliminate the immediate advantages of utilizing \cppinline{std::array} since accessing the underlying pointer through \cppinline{data()} would reintroduce the security concerns associated with C-style arrays.
+However, it can offer the advantage of not potentially invalidating the specification, as it does not need to consider the edge cases exemplified earlier.
+It would then be possible to develop other tools that implement the transformation of function parameters from C-style arrays to \cppinline{std::array}s if possible.
+
+For instance, one tool can check if all usages of the function taking a C-style array as a parameter involve \cppinline{std::array}s of the same size where \cppinline{data()} is invoked. In this scenario, the function parameter could be directly transformed, similar to the current version of the tool. 
+Another tool could address cases where the function accepts an incomplete array as a parameter alongside an integral type for bounds-checking purposes (e.g., \cppinline{void func(int arr[], size_t N)}).
+If the value of N can be determined at compile-time for all function invocations, the tool could transform the function into a version that accepts a constantly sized array with the size specified as a template parameter (e.g., \cppinline{template<size_t N> void func(std::array<int, N>& arr)}).
+
+Adopting such an approach could be more desirable, considering the numerous cases that need to be considered.
+Furthermore, it opens up the possibility of developing more specialized tools that leverage the full potential of \cppinline{std::array}.

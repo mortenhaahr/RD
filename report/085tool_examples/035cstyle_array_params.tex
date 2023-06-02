@@ -10,7 +10,7 @@ As a result, the tool should be extended to change the declaration of such funct
 
 The functionality described in this section is an extension of the C-style array converter that is focusing solely on the parameter conversion, so it has no changes to the command line parsing as compared to the original tool.
 
-\subsection{AST node matching}
+\subsection{AST node matching}\label{subsec:085tool:ast_matching}
 
 For this augmentation of the existing tool, a new matcher has to be created. The matcher must find all the function parameter declarations which are constant arrays. The matcher should additionally still extract the needed information like the variable declaration converter (\cref{subsec:085tool_example:030cstyle:node_matching}).
 

@@ -35,9 +35,8 @@ When an AST node has been identified as interesting to the tool it should be mat
 It is also possible to write custom matchers, which can be very powerful when the standard matchers are lacking. An example of such could be if one wishes to recursively traverse the declaration context, which was the case in one of the implementations of the enum tool.
 However, most the time the builtin matchers will be sufficient and they should therefore be the initial place to look when matching the AST.
 
-%TODO: write about custom matchers
 LibTooling defines three different basic categories of ``Matchers'' available to the users: Node matchers, Narrowing matchers and Traversal matchers.
-The Node matchers are the most general matchers and matches specific types of AST nodes, e.g., \cppinline{enumDecl} and \cppinline{constantArrayType}. A subset of the Node matchers are also bindable, meaning that they can be bound to an identifier and processed in the later stages of the tool.
+The Node matchers are the most general matchers and matches specific types of AST nodes, e.g., \cppinline{enumDecl} and \cppinline{constantArrayType}. Node matchers are also bindable, meaning that they can be bound to an identifier and processed in the later stages of the tool.
 The Narrowing matchers can be used to filter nodes that fulfil certain requirements, e.g. \cppinline{hasName} and \cppinline{isClass}. It also contains logical expressions such as \cppinline{allOf},\cppinline{anyOf} and \cppinline{unless}.
 The Traversal matchers can be used to traverse between the AST nodes in order to identify the relationships between nodes.
 Examples of Traversal matchers are \cppinline{hasDescendant} and \cppinline{specifiesType} \cite{clangASTMatcherReference}.

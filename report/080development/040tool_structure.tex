@@ -91,7 +91,6 @@ If the implementor chooses the first approach, then the stencils can easily beco
 If the second approach is chosen, the responsibility of extracting information from the nodes is placed inside the composed matcher. This can lead to some very complex matchers that can be difficult to understand. However, the stencils that extract information from the bound nodes will be much simpler.\\
 Furthermore, when following this approach one can easily fall into the pitfall of trying to match data which is not required at the end.\\
 E.g., when developing the enum tool an attempt to bind the namespace of the parameter of an existing \cppinline{to_string} function was made, since it was thought necessary for the transformation. In the end, the namespace could easily be extracted through a stencil and the binding was unnecessary as it did not provide enough context.
-However, a significant amount of time was spent on writing an exact matcher that could recursively traverse the namespace qualifiers of a parameter and bind it.
 
 Ultimately, the best approach to follow depends upon the specific scenario. In some cases, it may be better to write detailed stencils and in other cases detailed matchers. The important thing is to not focus too heavily on a single approach and keep an open mind towards the other. Perhaps the best approach lies within a mixture of the two.
 

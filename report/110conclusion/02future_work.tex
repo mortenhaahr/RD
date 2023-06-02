@@ -1,16 +1,31 @@
 \section{Future work}
 
-In order to fully explore the different tool structures, the third concieved implementation strategy for the enum-to-string tool (\cref{code:085tool:pseudo_enum3}) could be explored. 
-This third version could then be compared to the two versions developed for this project in order to determine which strategy is easiest to work with. %Not happy about the ending of this sentence.
-
-% Not handled (evt future work): What about enum definitions in header files? Place the to_sting method in the header or in a .cpp file?
-After the development for this project was finished, some edge cases were discovered for the enum-to-string tool implementations. 
-One of the unhandled edge cases is as follows:
-If an enum definitions is located in the header file, then the tool will look for ``to\_string'' function implementations in that header file only and not all the provided .cpp files. 
-This can lead to the generation of invalid source-code as multiple definitions of the ``to\_string'' function exist.
-Another limitation of the implemented tools is that they do not handle the difference between a function definition and a function declaration.
-This limitation can also lead to invalid source-code generation. 
-In order to use the enum-to-string tool in a development environment these edge cases should be handled.
+\subsection*{General tooling}
+This project primarily focused on general source-code generation tools that can be applied to diverse codebases.
+However, exploring the potential of utilizing LibTooling for tools with more domain-specific or industry-specific use cases would be interesting for further investigation.
+A proposed example was made by a Danish software consultancy company that wished to automatically generate ``boilerplate''\footnote{
+    In this context, ``boilerplate'' refers to code segments that are frequently used across projects with slight differences.
+} code for a frequently employed graphics framework.
 
 
-% Evt Write about the CStyle parameter converter part. 
+\subsection*{C-style array tool}
+As discussed in \cref{subsec:095disc:arrayParm}, there are potential benefits associated with altering the implementation of the C-style array tool to avoid directly modifying function declarations.
+The proposed tool structure presents an interesting topic for future investigation.
+
+\subsection*{Enum-to-string tool}
+In order to further explore different tool structures, the third conceived implementation strategy for the enum-to-string tool (\cref{code:085tool:pseudo_enum3}) could be implemented.
+An assessment of the advantages and disadvantages associated with using such a tool structure could then be conducted.
+
+An important edge case was revealed after the project's development phase, which involves the situation where an existing ``to\_string'' function is implemented with a separate definition and declaration.
+In such cases, the tool inadvertently updates the declaration with a definition, resulting in the potential creation of multiple definitions, which would lead to compilation errors.
+Handling this is nontrivial since the function definition might be located in a separate compilation unit that is inaccessible during the current run of the tool.
+To address this, the solution should ensure that declarations are never overwritten.
+The tool's new behaviour for each enum declaration can then be summarized as follows:
+\vspace*{-0.75em}
+\begin{itemize}
+    \item If a definition is found, update it.
+    \item If a declaration without a corresponding definition is encountered, skip that particular case, as a definition must exist in another compilation unit.
+    \item If no declaration or definition exists, generate a new ``to\_string'' function.
+\end{itemize}
+
+Addressing this issue further and providing a concrete solution could be interesting to explore in the future.

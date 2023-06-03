@@ -42,6 +42,7 @@ The solution is by no means perfect, as the user is still forced to execute the 
 
 In the future, it may be desirable to explore a solution using the LLVM command line library to search some commonly used directories for the Clang headers.
 
+\pagebreak
 \subsection{Configuring the target project}
 
 The target project, whose source files will be analysed by the tool, should generate a compilation database. A compilation database contains information about the compilation commands invoked to build each source file. This file is used by LibTooling to detect the compile commands and include files necessary to generate the correct AST \cite{clangJSONCompilationDatabase}. Tools like CMake can auto-generate the compilation commands at configuration time. When using CMake the compilation database generation can be enabled by inserting \cmakeinline{set(CMAKE_EXPORT_COMPILE_COMMANDS 1)} in the CMakeLists.txt file.

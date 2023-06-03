@@ -24,6 +24,7 @@ A good way of configuring the behaviour of a tool is through command line argume
 
 The way to add command line options to a tool is through the command line library provided by LLVM. This library makes it very easy to add new commands and provide help text for the options. A great example of how to use the library can be found in the implementation of ClangFormat \cite{clangClangFormatClangFormat2023}, where they have multiple options with different types and default values.
 
+\pagebreak
 \subsection{AST node matching} \label{subsec:080dev:ASTNodeMatching}
 
 The next step in working with LibTooling is to find the relevant AST nodes through matching and binding. This is a very important part of tool development as it defines what kind of information is available for the later stages of the tool. If the wrong AST is matched or the wrong nodes are bound, the later processing can become unnecessarily complex and complicated. Furthermore, the task of matching the AST can also be very difficult as there are currently more than 700 different matchers available as part of the library \cite{clangASTMatcherReference}. 
@@ -64,7 +65,7 @@ The result consumer is responsible for saving the relevant results so they can b
 
 \subsubsection*{Stencils} \label{subsubsec:080dev:stencils}
 
-The \href{https://github.com/llvm/llvm-project/blob/main/clang/include/clang/Tooling/Transformer/Stencil.h}{stencil interface} is used to extract information from bound nodes and convert the information to strings. The stencil interface is an abstraction on top of \cppinline{MatchComputation<std::string>} which is called on matched nodes through the Transformer API. 
+The stencil interface \cite{clangStencilLibraryLibTooling2023} is used to extract information from bound nodes and convert the information to strings. The stencil interface is an abstraction on top of \cppinline{MatchComputation<std::string>} which is called on matched nodes through the Transformer API. 
 
 Examples of use-cases for the stencil interface could be to extract the element type of an array or to issue a warning at a given location. The functions of the predefined stencils are primarily focused on control flow, concatenation of stencils and processing expressions. Therefore, it is very likely that the creator of a tool will have to create custom stencils to extract the necessary data from the bound nodes.
 
@@ -88,7 +89,7 @@ If the implementor chooses the first approach, then the stencils can easily beco
 
 If the second approach is chosen, the responsibility of extracting information from the nodes is placed inside the composed matcher. This can lead to some very complex matchers that can be difficult to understand. However, the stencils that extract information from the bound nodes will be much simpler.\\
 Furthermore, when following this approach one can easily fall into the pitfall of trying to match unnecessary data.\\
-E.g., when developing the enum tool an attempt to bind the namespace of the parameter of an existing \cppinline{to_string} function was made, since it was thought necessary for the transformation. In the end, the namespace could easily be extracted through a stencil and the binding was unnecessary as it did not provide enough context.
+E.g., when developing the enum-to-string tool an attempt to bind the namespace of the parameter of an existing \cppinline{to_string} function was made, since it was thought necessary for the transformation. In the end, the namespace could easily be extracted through a stencil and the binding was unnecessary as it did not provide enough context.
 
 Ultimately, the best approach to follow depends upon the specific scenario. In some cases, it may be better to write detailed stencils and in other cases detailed matchers. The important thing is to not focus too heavily on a single approach and keep an open mind towards the other. Perhaps the best approach lies within a mixture of the two.
 

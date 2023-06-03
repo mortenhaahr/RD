@@ -1,6 +1,8 @@
 \section{Simple rename refactoring tool} \label{sec:085tool:example:simple_rename}
 
-The goal of this tool is to rename all functions in the provided source-code that has the name ``MkX'' into ``MakeX''. The tool should both rename the function declaration and the locations where it is called. The code in this section has been mostly stripped of the namespace specifiers in order to simplify the code.
+The goal of this tool is to rename all functions in the provided source-code that has the name ``MkX'' into ``MakeX''. It should both rename the function declaration and the locations where the function is invoked.\\
+The tool shares the same functionality as the introductory tutorial for working with LibTooling \cite{clangClangTransformerTutorial}.
+In contrast to the tutorial, this report provides a complete and comprehensive example that showcases the concepts introduced in the tutorial.
 
 \subsection{Command line parsing}
 
@@ -16,7 +18,6 @@ int main(int argc, const char* argv[]) {
 		return 1;
 	}
 	CommonOptionsParser &OptionsParser = ExpectedParser.get();
-
     return 0;
 }
     \end{cppcode}
@@ -75,7 +76,7 @@ auto renameFunctionAndInvocations = applyFirst({renameFunctionRule, renameInvoca
     \label{code:080dev:tool_example:rename:both}
 \end{listing}
 
-The rules required for the simple renaming tool have been specified, but in order to extract the source-code changes they have to be coupled with a transformer. The transformer is described in detail in \cref{sec:080dev:tool_structure}.
+The rules required for the simple renaming tool have been specified, but in order to extract the source-code changes they have to be combined through a transformer. The transformer was described in detail in \cref{sec:080dev:tool_structure}.
 
 The transformer needs a consumer that saves the generated source-code edits to an external variable. The consumer callback receives an expected array of \cppinline{AtomicChange} objects which in turn contain the \cppinline{Replacements} which should be made to the source-code. The consumer shown in \cref{code:080dev:tool_example:consumer} extracts the \cppinline{Replacements} from the \cppinline{AtomicChange}s and saves them in a map variable that is defined externally. The consumer and the rules can be used to create the transformer as shown in \cref{code:080dev:tool_example:transformer}.
 
@@ -90,7 +91,6 @@ auto consumer(std::map<std::string, Replacements> &fileReplacements) {
             std::string &filePath = change.getFilePath();
             for (const Replacement &replacement : change.getReplacements()) {
                 Error err = fileReplacements[filePath].add(replacement);
-
                 if (err) {
                     throw "Failed to apply changes in " + filePath + "! " + toString(std::move(err));
                 }
@@ -113,8 +113,9 @@ Transformer transformer(renameFunctionAndInvocations, consumer(externalFilesToRe
 
 \subsection{Handling the results}
 
-This part of the tool is responsible for the creation of the actual tool and saving the results to disk.\\
-The goal of this tool is to refactor function names. The Clang project already has a tool for refactoring called clang-refactor. This tool is also created through LibTooling and it defines a class called \cppinline{RefactoringTool} which extends the \cppinline{ClangTool} class. The \cppinline{RefactoringTool} adds a way to save \cppinline{Replacements} to disk. The changes that should be saved to disk are located in a \cppinline{std::map<std::string, Replacements>} which is contained inside of the \cppinline{RefactoringTool}. The \cppinline{RefactoringTool} implementation already contains all the needed functionality to finish the rename refactoring tool. All that remains is therefore to create the tool and invoke it, which is shown in \cref{code:080dev:tool_example:tool_invocation}.
+This part of the tool is responsible for the creation of the actual tool and saving the results to disk.
+This can be achieved with the help of the built-in class \cppinline{RefactoringTool} which extends \cppinline{ClangTool}.
+The \cppinline{RefactoringTool} adds a way to save \cppinline{Replacements} to disk. The changes that should be saved to disk are located in a \cppinline{std::map<std::string, Replacements>} which is contained inside of the \cppinline{RefactoringTool}. The \cppinline{RefactoringTool} implementation already contains all the needed functionality to finish the rename refactoring tool. All that remains is therefore to create the tool and invoke it, which is shown in \cref{code:080dev:tool_example:tool_invocation}.
 
 
 \begin{listing}[H]

@@ -18,12 +18,12 @@ The third tool generates a \cppinline{to_string} function for each enum declarat
 The LLVM project is a collection of compiler and toolchain technologies that can be used to build compiler-frontends for programming languages and compiler-backends for multiple instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
 One project created alongside LLVM is Clang. Clang is a compiler-frontend for languages in the C language family including C, C++, Objective C and many others \cite{clangClangLanguageFamily}.\\
 The LibTooling library was created as part of the Clang project and it allows developers to build standalone tools based on Clang \cite{llvmLibToolingClang17}. 
-The library provides access to Clang's AST parser and LLVM's command line parsing. As C++ is a complex programming language with context-sensitive grammar, having access to an existing parser through the library is a great starting point for tool development \cite{swarnimProblemsPainsParsing}. The tool developer APIs hook into the compilation pipeline after the parsing step, which guarantees that the tool is run on valid ASTs. Furthermore, Clangs AST is very fine-grained allowing for a detailed analysis of the provided source-code, which is very helpful when developing tools \cite{clangIntroductionClangAST}. The full compilation pipeline of Clang and LLVM can be seen on \cref{fig:040des:llvmToolchainOverview}. The structure of a tool created with LibTooling can be seen on \cref{fig:040des:clangToolingOverview}.
+The library provides access to Clang's AST parser and LLVM's command line parsing. As C++ is a complex programming language with context-sensitive grammar, having access to an existing parser through the library is a great starting point for tool development \cite{swarnimProblemsPainsParsing}. The library APIs hook into the compilation pipeline after the parsing step, which guarantees that the tool is only run on valid AST. Furthermore, Clangs AST is very fine-grained allowing for a detailed analysis of the provided source-code, which is very helpful when developing tools \cite{clangIntroductionClangAST}. The full compilation pipeline of Clang and LLVM can be seen on \cref{fig:040des:llvmToolchainOverview}. The structure of a tool created with LibTooling can be seen on \cref{fig:040des:clangToolingOverview}.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{figs/040des/compilation_overview.png}
-    \caption{Overview of the Clang and LLVM compilation pipeline. The yellow blocks in the diagram are in/outputs of the pipeline. The green box is the Clang front end. The blue box is the conversion step between the Clang front end and the LLVM back end. The red box is the LLVM optimizations. The purple box represents the tasks of the backend for the specific instruction set architecture.}
+    \caption{Overview of the Clang and LLVM compilation pipeline. The yellow blocks in the diagram are in/outputs of the pipeline. The green box is the Clang frontend. The blue box is the conversion step between the Clang frontend and the LLVM backend. The red box is the LLVM optimizations. The purple box represents the tasks of the backend for the specific instruction set architecture.}
     \label{fig:040des:llvmToolchainOverview}
 \end{figure}
 
@@ -47,13 +47,13 @@ A few examples of the APIs are RecursiveASTVisitor, LibASTMatchers and Clang Tra
 \section{Methods}
 As described earlier three different tools were developed during the project. The tools are used as a progressive learning platform for exploring increasingly complex parts of the LibTooling library. 
 
-The first tool is a renaming tool, that will refactor a method with an illegal name (``MkX'') into a legal name (``MakeX''). The tool will also rename all the calls to that method in order to keep the same functionality. The purpose of developing this tool is to get familiar with the basics of the LibTooling library, which will make later development easier. 
+The first tool is a renaming tool, that will refactor a method with an illegal name (``MkX'') into a legal name (``MakeX''). The tool will also rename all the calls to the renamed method to keep the specification valid. The purpose of developing this tool is to get familiar with the basics of the LibTooling library, which will make later development easier. 
 
 The second tool is also a refactoring tool but with more complexity than the renaming tool. The purpose of the second tool is to convert traditional C-style arrays into the more modern and strongly typed \cppinline{std::array}s. This tool is more complex than the renaming tool because there is more information associated with arrays than function names. Furthermore, there are more semantic considerations which have to be taken into account when making this type of change.
 Developing this tool brings insight into the challenges related to automatically refactoring more complex declarations.
 
-The third tool analyzes the code base for enums and generates ``to\_string'' functions for each enum definition. The ``to\_string'' function will return a string representation of the named enum constants defined in the enum. In order to ensure valid source-code after the tool is run, existing ``to\_string'' functions should be overwritten or updated as a part of the process. 
+The third tool analyzes the code base for enum declarations and generates ``to\_string'' functions for each enum declaration. The ``to\_string'' function will return a string representation of the named enum constants defined in the enum. In order to ensure the source-code is valid after the tool is run, existing ``to\_string'' functions should be overwritten, updated or removed as a part of the process. 
 This tool is comparable in complexity to the C-style converter tool but adds the complexity of code generation to the tool.
-Furthermore, the tool is implemented following two different structures in order to compare these.
+Furthermore, the tool is implemented following two different strategies in order to compare and explore different methodologies.
 
 Through these three tools, a deeper understanding of the LibTooling library and the C++ language is obtained.

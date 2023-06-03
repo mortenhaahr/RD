@@ -24,7 +24,7 @@ The first tests were run on a simple test file that was also used to verify the 
 \end{table}
 \vspace*{-1em}
 
-The tools were also tested on ``\href{https://github.com/nlohmann/json}{JSON}'' which is a popular open-source JSON header-only library, containing around 25000 lines of code.
+The tools were also tested on ``JSON'' which is a popular open-source JSON header-only library \cite{lohmannJSONModern2022}, containing around 25000 lines of code.
 The tools were invoked once on the JSON library and the results can be seen in \cref{tab:090tests:json}.
 
 \begin{table}[H]
@@ -50,9 +50,9 @@ The group's current hypothesis is, that it is due to the parsing of the AST as t
 An attempt was made to validate this hypothesis by profiling the tools. However, the profiling process proved challenging as it was difficult to differentiate the application code from the library code.
 This challenge arose from a combination of factors, including the dynamic linking of the library code and the use of custom stencils and matchers passed as parameters in the application code.
 In the case of dynamic linking, the profiler can only capture and profile the public function calls available in the library's API.
-This means that libray's internal function calls are invisible to the profiler.
+As a result, the library's internal function calls are invisible to the profiler.
 Since the custom stencils and matchers are essentially passed as function pointers, they are being executed inside the internal parts of the library, which is inaccessible to the profiler.
-As a result of the challenges, the profiling results were inconclusive. 
+Due to these challenges, the profiling results were inconclusive. 
 
 The results of the tests should be interpreted cautiously due to the small sample size and potential variations in other source files.
 

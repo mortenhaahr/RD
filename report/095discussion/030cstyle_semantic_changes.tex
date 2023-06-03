@@ -11,7 +11,7 @@ The conversion from a C-style \cppinline{int[5]} array to a \cppinline{std::arra
 
 A more interesting scenario to consider is how to handle a C-style array of constant integers\\
 (\cppinline{const int array[5]}). For this conversion, there are two possibilities. Either with a constant \cppinline{std::array} declaration
-(\cppinline{const std::array<int, 5> array}), or with a constant templated type\\
+(\cppinline{const std::array<int, 5> array}), or with a constant template parameter type\\
 (\cppinline{std::array<const int, 5> array}).
 The two solutions are almost identical in meaning, as they will both prevent the programmer from changing the elements inside the \cppinline{std::array}.
 The difference between the two approaches is that the non-const member functions\footnote{
@@ -78,7 +78,7 @@ Rather than attempting to refactor the functions themselves, the tool could have
 The transformation is, however, guaranteed to output a valid specification as many of the edge cases can be ignored.
 It would then be possible to develop other tools that implement the transformation of function parameters from C-style arrays to \cppinline{std::array}s.
 
-For instance, one tool could check if all the calls to a given function, which takes a C-style array parameter, are made with \cppinline{data()} methods from \cppinline{std::array}s with the same size. In this scenario, the function parameter could be directly transformed, similar to the current version of the tool. 
+For instance, one tool could check if all the calls to a given function, which takes a C-style array parameter, are made with \cppinline{data()} methods from \cppinline{std::array}s with the same size. In this scenario, the function parameter could be directly transformed, similar to the current version of the tool.\\
 Another tool could address cases where the function accepts an incomplete array as a parameter alongside an integral type for bounds-checking purposes (e.g., \cppinline{void func(int arr[], size_t N)}).
 If the value of N can be determined at compile-time for all function invocations, the tool could transform the function into a version that accepts a constantly sized array with the size specified as a template parameter (e.g., \cppinline{template<size_t N> void func(std::array<int, N>& arr)}).
 

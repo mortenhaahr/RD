@@ -1,4 +1,4 @@
-\section{The two enum-to-string tool}
+\section{The two enum-to-string tools}
 
 % Write about the scenario described in the todo.
 The first part of this section describes a difference which was found between the two implementations of the enum-to-string tool.
@@ -32,7 +32,7 @@ On the other hand, there might also be code bases, where the functions were acci
 The ``optimal'' solutions to the two scenarios described above differ on a case-by-case basis. Therefore the developers of a tool must either decide how this scenario should be handled or let the users of the tool choose for themselves.
 
 Both tools can be changed in order to behave identically in the proposed scenario. For the single-step tool, the \cppinline{hasDescendant} matcher, which is used for the traversal, could be switched for the \cppinline{forEachDescendant} matcher. This matcher will create a match for each descendant which matches the specification and thereby update both functions.\\
-For the multi-step tool to stop after matching the first of the two functions, a custom matcher would have to be created. The custom matcher would have to dynamically check if a ``to\_string'' function for the specified \cppinline{EnumDecl} has been identified previously. If another ``to\_string'' function has been found already, the matcher can return \cppinline{false} - thereby only causing a match on the first function definition.
+For the multi-step tool to stop after matching the first of the two functions, a custom matcher would have to be created. The custom matcher would have to dynamically check if a ``to\_string'' function for the specified \cppinline{EnumDecl} has been identified previously. If another ``to\_string'' function has been found already, the matcher can return \cppinline{false} -- thereby only causing a match on the first function definition.
 
 
 \subsection{The impact of the implementation strategies}

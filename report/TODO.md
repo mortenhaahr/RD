@@ -7,4 +7,3 @@
 - Conclusion
 
 - Discussion: Write better section titles
-- Mikkel: Review 085tool_examples/035cstyle_array_params.tex

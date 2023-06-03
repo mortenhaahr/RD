@@ -1,8 +1,23 @@
 \chapter{Conclusion}
+This R\&D project focuses on exploring the capabilities of the LibTooling library for automatic source-code generation.
+The report began with an introduction to LibTooling and provides detailed instructions for configuring a development environment.
+It then proposed a structured approach to tool development using LibTooling, which was followed in the creation of three distinct tools.
 
-During this project, multiple tools were developed using the LibTooling library created by Clang. 
-The tools each presented different challenges concerning tool creation and understanding of the C++ language. 
-Through the developed tools numerous crucial considerations, that must be taken into account during tool development, were identified.
-It was shown through the tools that it is possible to both refactor existing code and generate new code.
-Through experimentation with the two versions of the enum-to-string tool, it was found that using multi-step tool development leads to easier development and faster tools.
-For future tool development, a more modular approach should be explored.
+The first tool was a simple renaming tool that provided a practical introduction to developing tools with LibTooling.
+
+The second tool focused on C-style array conversion and can be used to refactor existing codebases into more modern and safe code by adopting \cppinline{std::array}.
+During its development, several subtle semantic details regarding the use of C-style arrays as function parameters were revealed.
+These details highlighted the tool's inability to handle all edge cases of the transformation.
+As a result, a more modular approach was proposed for the tool, narrowing its scope while creating opportunities for other tools to optimize the codebase further.
+
+The third tool aimed to automate the generation of a ``to\_string'' function for enum declarations.
+Two different approaches were explored during the development process.
+The first approach implemented the functionality in a single step, while the second approach followed a modular structure and divided the implementation into two steps.
+Ultimately, the multi-step approach was favoured for its modularity and ease of development.
+Surprisingly, it also exhibited similar or better performance than the single-step implementation, making it the preferred approach for the development of future tools.
+
+
+In conclusion, LibTooling proved to be an effective library for developing automatic source-code generation tools.
+Leveraging the lexical- and syntax analysis of Clang ensures that the initial C++ specification is valid, providing a solid foundation for tool development.
+The fine-grained AST  allows for powerful transformations, but the granularity of the AST can present challenges, as the sheer number of components can be overwhelming to work with.
+Nevertheless, with careful consideration and appropriate strategies, the library enables the development of sophisticated tools that can greatly assist in code generation and refactoring tasks.

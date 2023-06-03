@@ -109,7 +109,7 @@ for enum_decl in source_files:
 
 A third way of implementing the tool can be seen in \cref{code:085tool:pseudo_enum3}. This version is also a multi-step procedure. The first step consists of identifying the existing ``to\_string'' functions. The second step consists of finding all the enum declarations. If the declaration already has a ``to\_string'' function, found in step 1, then it is updated. Otherwise, it is generated.
 
-The main difference between the second and the third strategy is regarding semantics. It might be simpler to divide the tool into two distinct phases consisting of a data collection phase and a post-processing phase, where the post-processing performs the actual logic of the tool - in this case, the updating/generation of the ``to\_string'' function. This appears to be a common division of responsibilities and is among others used in a helper library that was written by Bloomberg \cite{bloombergClangmetatoolFrameworkReusing2023}.
+The main difference between the second and the third strategy is regarding the structure. It might be simpler to divide the tool into two distinct phases consisting of a data collection phase and a post-processing phase, where the post-processing performs the actual logic of the tool - in this case, the updating/generation of the ``to\_string'' function. This appears to be a common division of responsibilities and is among others used in a helper library that was written by Bloomberg \cite{bloombergClangmetatoolFrameworkReusing2023}.
 
 \begin{listing}[H]
     \begin{pythoncode}

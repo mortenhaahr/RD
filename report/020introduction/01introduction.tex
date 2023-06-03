@@ -1,25 +1,36 @@
 \chapter{Introduction}
 
-The C++ programming language has been around for many years and is one of the most used programming languages in the world \cite{nexttechnologyprofessionalsMostPopularProgramming2022}.
-C++ is a general-purpose programming language which allows the programmer full access to the underlying memory in the system. 
-For this reason, it is used heavily in systems- and embedded programming. \cite{adminWhereUsedIndustry2021}
-Huge projects, like Clang and Folly, have been created in C++ \cite{clangClangLanguageFamily, facebookFollyFacebookOpensource2023}.
-These huge projects have to be maintained and updated over time in order to ensure they stay relevant and provide better safety for their users. 
-Updating and maintaining these projects is a gigantic endeavour, as there are millions of lines of code to check and update.
-These tasks either require a team of experienced coders and reviewers or they require the use of automatic tools.
-This research and development (R\&D) project will explore how the LibTooling library, developed by Clang, can be used for C++ source-code generation.
+The general-purpose programming language C++ has existed since 1985 and is one of the most used programming languages in the world \cite{nexttechnologyprofessionalsMostPopularProgramming2022}.
+C++ is known for providing a high level of abstraction without sacrificing performance.
+It grants the developer full access to the underlying memory of the system, which makes it a popular choice for systems- and embedded programming  \cite{adminWhereUsedIndustry2021}.
+Large-scale projects with millions of code lines, such as LLVM and Folly, have been created in C++ \cite{llvmLLVMCompilerInfrastructure, facebookFollyFacebookOpensource2023}.
+These huge projects have to be maintained and updated over time in order to ensure their relevancy and to provide better safety for their users.
+Maintaining projects of these magnitudes is a gigantic endeavour, that requires extensive effort in development, code reviews, and other related tasks.
+By leveraging the usage of automatic tools, developers can streamline various tasks, leading to increased efficiency and reduced manual effort in project upkeep.
 
-LLVM is a collection of compiler and toolchain technologies which is used to develop both compiler frontends for different programming languages and compiler backends for different instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
-Clang is a C-family frontend to the LLVM project, which means that it can compile C, C++, Objective C and many more C-like programming languages \cite{clangClangLanguageFamily}.
-The Clang team has developed a library called LibTooling, which can be used to access the abstract syntax tree (AST) representation of the provided source-code. 
-Having access to the AST allows developers to do semantic analysis and allows for the creation of sophisticated tools.
+The open-source project Clang is a widely-used compiler frontend for languages in the C family, including C++, designed with a modular architecture \cite{clangClangLanguageFamily}.
+It encompasses several libraries that offer reusable components, enabling developers to extend their usage beyond their original purpose.
+One such library is LibTooling, which leverages Clang's lexical- and syntax analysis capabilities to provide access to the abstract syntax tree (AST) of the source code.
+With access to the AST, developers can perform semantic analysis and apply sophisticated logic that goes beyond the scope of the standalone compiler.
+This logic can then be encapsulated in either standalone tools or plugins that seamlessly integrate with the compiler.
 
-In this project, three different tools will be created with the LibTooling library. The tools will explore how Clang represents C++ source-code through its AST and how to extract information from the nodes. The tools will also dive into the semantic considerations which have to be made when developing tools that refactor/generate source-code. The three tools which will be developed during this project are:
+% Purpose of R&D
+\begin{quote}
+    The purpose of this research and development (R\&D) project is to explore the capabilities of LibTooling, focusing on its application for C++ source-code generation.
+\end{quote}
 
+Throughout the project, three different tools will be created with the LibTooling library.
+These tools will serve as a learning platform to gain insights into how Clang represents C++ source-code through its AST and how to extract relevant information from the AST nodes.\\
+When developing source-code generation tools, various semantic considerations need to be taken into account.
+These considerations involve making decisions about how to correctly analyze and modify the source code while preserving its intended semantics.
+This report will not only document the development process but also highlight and discuss some of the significant semantic decisions that arise during the tool development.
+By exploring these decisions, the report aims to provide valuable insights into the challenges and considerations involved in developing source-code generation tools using LibTooling.\\
+The three tools which will be developed during this project are:
+\vspace*{-0.75em}
 \begin{enumerate}
-    \item A function renaming tool
-    \item A C-style array\footnote{A C-style array is the classic C-style of writing arrays, e.g., \cppinline{int array[10]}.} to \cppinline{std::array} converter tool
-    \item A to-string function generator tool for enums
+    \item A function renaming tool.
+    \item A C-style array\footnote{A C-style array is the classic C-style of writing arrays, e.g., \cppinline{int array[10]}.} to \cppinline{std::array} converter tool.
+    \item A ``to\_string'' function generator tool for enums.
 \end{enumerate}
-
-Tools like the ones developed during this project are what allow developers to keep codebases secure and up to date.
+\vspace*{-0.75em}
+Tools like the ones developed during this project can help developers keep codebases secure and up to date.

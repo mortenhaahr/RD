@@ -12,7 +12,7 @@ This R\&D project investigates the usage of the library LibTooling for writing d
 
 The first tool is a simple renaming tool that can be used to rename functions and their matching invocations.\\
 The second tool is also a refactoring tool which transforms arrays specified using the C-style notation into the more modern and secure \cppinline{std::array} notation. \\
-The third tool generates a \cppinline{to_string} function for each enum declaration inside the program, i.e., a function that takes an instance of that enum as an argument and returns a string corresponding to the name of the value of the enum. If an existing \cppinline{to_string} function exists, e.g., in another namespace, the tool updates it in place instead.
+The third tool generates a ``to\_string'' function for each enum declaration inside the program, i.e., a function that takes an instance of that enum as an argument and returns a string corresponding to the name of the value of the enum. If an existing ``to\_string'' function exists, e.g., in another namespace, the tool updates it in place instead.
 
 \section{Technology overview}
 The LLVM project is a collection of compiler and toolchain technologies that can be used to build compiler-frontends for programming languages and compiler-backends for multiple instruction set architectures \cite{llvmLLVMCompilerInfrastructure}.
@@ -30,7 +30,7 @@ The library provides access to Clang's AST parser and LLVM's command line parsin
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.4\textwidth]{figs/040des/clang_tool_pipeline.png}
-    \caption{An overview of the Clang frontend and the LibTooling library. The green and orange boxes are identical to the boxes in \cref{fig:040des:llvmToolchainOverview}. The yellow box is the filtering/semantic analysis of the AST for the given tool. The tree splits into two to show that multiple different tools can use the library. On the left with the red box is the structure of the popular Clang-tidy tool\cite{clangClangTidyExtraClang}. On the right in blue is the structure of a custom tool as developed in this project. The two grey boxes indicate outputs from the tools.}
+    \caption{An overview of the Clang frontend and the LibTooling library. The green and orange boxes are identical to the boxes in \cref{fig:040des:llvmToolchainOverview}. The yellow box is the filtering/semantic analysis of the AST for the given tool. The tree splits into two to show that multiple different tools can use the library. On the left with the red box is the structure of the popular Clang-tidy tool \cite{clangClangTidyExtraClang}. On the right in blue is the structure of a custom tool as developed in this project. The two grey boxes indicate outputs from the tools.}
     \label{fig:040des:clangToolingOverview}
 \end{figure}
 

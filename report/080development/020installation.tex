@@ -3,13 +3,13 @@ One might think installing LLVM and Clang should be a straightforward process bu
 
 The process of compiling LLVM, Clang and LibTooling can be considered a two-step process. Initially, the tools must be compiled using an arbitrary C++ compiler and then recompiled using the Clang compiler itself.
 
-Before compiling the projects, one must install the needed tools, which include ''CMake'' and ''Ninja''. They can be installed using a package manager or by compiling it locally through \url{https://github.com/martine/ninja.git} and \url{git://cmake.org/stage/cmake.git}. Furthermore, one needs to have a working C++ compiler installed. The rest of this section assumes the compiler GCC is installed.
+Before compiling the projects, one must install the needed tools, which include ''CMake'' and ''Ninja''. They can be installed using a package manager or by compiling it locally through \url{https://github.com/martine/ninja.git} and \url{git://cmake.org/stage/cmake.git}. A working C++ compiler must also be installed. The rest of this section assumes the compiler GCC is installed.
 
 
-LLVM and Clang can then be compiled for the first time using GCC. Assuming the terminal is used, this can be done as seen in \cref{code:080dev:llvm_compile_init}.
-First, the LLVM repository is cloned which also contains the Clang project.
+LLVM and Clang can be compiled for the first time using GCC. Assuming the terminal is used, this can be done as seen in \cref{code:080dev:llvm_compile_init}.
+First, the LLVM repository, which also contains the Clang project, is cloned.
 Line 2 - 4 goes inside the repository and sets up the build folder.
-Line 5 uses CMake to configure the project where Ninja is used as the generator\footnote{A CMake generator writes input files to the underlying build system \cite{cmakeCmakegeneratorsCMake26}.}, Clang and Clang Tools are enabled, tests are enabled and it should be built in release mode. The final line instructs Ninja to build the projects. Note that it is possible to skip building and running the tests but it is recommended to ensure that the build process succeeded.
+Line 5 uses CMake to configure the project and ensures Ninja is used as the generator\footnote{A CMake generator writes input files to the underlying build system \cite{cmakeCmakegeneratorsCMake26}.}. The configuration also specifies that the Clang project and assosiated tests should be compiled. For performance reasons, the configuration also specifies that the project is to be built in release mode. The final line instructs Ninja to build the projects. Note that it is possible to skip building and running the tests but it is recommended to ensure that the build process succeeded.
 
 \begin{listing}[H]
     \begin{bashcode}
@@ -24,7 +24,7 @@ ninja
     \label{code:080dev:llvm_compile_init}
 \end{listing}
 
-The next steps consist of testing the targets to ensure that the compilation was successfull. This is done by running the tests as seen in the two first lines on \cref{code:080dev:llvm_test_init}. Finally, the initial version of Clang that is compiled with an arbitrary compiler is installed.
+The next steps consist of testing the targets to ensure that the compilation was successfull. This is done through the compiled tests as seen in the two first lines on \cref{code:080dev:llvm_test_init}. Finally, the initial version of the Clang compiler is installed.
 
 \begin{listing}[H]
     \begin{bashcode}
@@ -32,11 +32,11 @@ ninja check
 ninja clang-test
 sudo ninja install
     \end{bashcode}
-    \caption{Bash commands to test the LLVM and Clang projects and then finally install them.}
+    \caption{Bash commands to test and install the LLVM and Clang projects.}
     \label{code:080dev:llvm_test_init}
 \end{listing}
 
-Clang should now be recompiled using Clang to avoid name mangling issues \cite{ibmIBMDocumentation2021}, i.e., ensure that the symbolic names the linker assigns to library functions do not overlap. This time the project ``cmake-tools-extra'' should also be included to build LibTooling and the complementary example projects.
+The project should now be recompiled using newly built Clang compiler to avoid name mangling issues \cite{ibmIBMDocumentation2021}, i.e., ensure that the symbolic names assigned to library functions by the linker do not overlap. This time the project ``cmake-tools-extra'' should also be included in the configuration in order to build LibTooling and the complementary example projects.
 The option \bashinline{-DCMAKE_BUILD_TYPE=RelWithDebInfo} is also a possibility if one wishes to include debug symbols in the libraries which can be useful during development. This however comes with a performance trade-off, as Clang itself will also be compiled with debug symbols which will slow it down.
 The group has yet to find a way to compile LibTooling with debug symbols but Clang without it.
 
@@ -45,7 +45,7 @@ The group has yet to find a way to compile LibTooling with debug symbols but Cla
 cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
 ninja
     \end{bashcode}
-    \caption{Bash commands to compile LLVM, LibTooling and Clang with Clang as compiler.}
+    \caption{Bash commands to compile LLVM, LibTooling and Clang with the Clang compiler.}
     \label{code:080dev:llvm_compile_final}
 \end{listing}
 

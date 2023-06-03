@@ -1,13 +1,11 @@
 \section*{Abstract}
-
-This research and development project will look into how Clang can be used for C++ source-code generation. 
-During this project, three different tools were developed using the LibTooling library developed by Clang.
-The tools each show an aspect of tool development and the considerations which have to be made when developing them.
-For one of the tools two different implementation strategies were used.
-The two different implementations were compared both in terms of speed and in terms of development experience.
-During the development of the tools, a common structure for tool development was identified and used. 
-Through the development of more demanding tools, the tradeoff between complex abstract syntax tree search algorithms and complex data processing was explored.
-Furthermore, the tools provide a window of understanding into the internals of the C++ language.
-The tools improve upon existing ideas by extending them and considering more edge cases.
-Through the tools, many new considerations were identified.
-These new considerations can be used for the development of better tools. 
+This research and development project explores how the open-source library LibTooling can be used for developing C++ source-code generation tools.
+Initially, the report provides instructions on how to set up and configure a development environment for building LibTooling tools outside the library repository. This includes installing the necessary dependencies, such as Clang and LLVM, and configuring the build system to enable the development of LibTooling tools.
+The project encompasses the development of three distinct tools, each showcasing different aspects of tool development and the associated considerations.
+These tools serve as practical examples to demonstrate various techniques and approaches in building LibTooling-based tools.
+Different implementation strategies were employed during the development of the tools, to explore various approaches and compare them based on two key factors: execution speed and ease of development.
+Furthermore, a standardized structure for creating source-code generation tools is identified and utilized.
+In the project, it is identified that any filtering achieved through abstract syntax tree node matching can also be achieved through node processing.
+The report discusses the balance and trade-off between these approaches in terms of ease of development.
+It further delves into the significant semantic considerations that arise during the development of such tools, thereby providing insights into the internal workings of the C++ language.
+Through the examination of these tools and the associated considerations, this project offers a deeper understanding of the capabilities and intricacies of LibTooling in the context of automated source-code generation for C++ programming.

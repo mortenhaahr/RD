@@ -11,7 +11,7 @@ The conversion from a C-style \cppinline{int[5]} array to a \cppinline{std::arra
 
 A more interesting scenario to consider is how to handle a C-style array of constant integers\\
 (\cppinline{const int array[5]}). For this conversion, there are two possibilities. Either with a constant \cppinline{std::array} declaration
-(\cppinline{const std::array<int, 5> array}), or with a constant template parameter\\
+(\cppinline{const std::array<int, 5> array}), or with a constant templated type\\
 (\cppinline{std::array<const int, 5> array}).
 The two solutions are almost identical in meaning, as they will both prevent the programmer from changing the elements inside the \cppinline{std::array}.
 The difference between the two approaches is that the non-const member functions\footnote{
@@ -20,7 +20,7 @@ The difference between the two approaches is that the non-const member functions
 They are technically available to the other version, but calling them will result in a compile-time error as the functions will attempt to modify the values of the \cppinline{const int}s.
 As a result, the main distinction for the programmer lies in the type of compile-time error that occurs and the readability of the code.\\
 For readability of the code and the error messages, the group prefers the \cppinline{const std::array<..>} representation.
-However, in the implementation of the conversion tool, the std::array<const ...> version is created. This choice is made because it is easier in LibTooling to extract the entire array element type, including the const qualifier than it is to separate the two.
+However, in the implementation of the conversion tool, the \cppinline{std::array<const ...>} version is created. This choice was made because it was easier to extract the entire array element type, including the const qualifier than it was to separate the two.
 Since the difference between the two versions is so minimal the ease of development was prioritised.
 
 \subsubsection*{Pointer type arrays}
@@ -30,7 +30,7 @@ Like the array of value types, arrays of pointer types can be converted directly
 E.g., \cppinline{const int*[4]} becomes \cppinline{std::array<const int*, 4>} and \cppinline{int* const[4]} becomes \cppinline{std::array<int* const, 4>}.
 
 It is also possible to represent a constant array with a pointer type through \cppinline{const std::array<int*, N>}.
-However, this representation is tricky, as it is unclear which of the aforementioned pointer type arrays it corresponds to.
+However, this representation is rather tricky, as it is unclear which of the aforementioned pointer type arrays it corresponds to.
 A simple way of testing the similarity between the representations is seen in \cref{code:095:discussion:test_of_array_conversion_eq}.
 The idea behind the test is that a \cppinline{const Test*} and \cppinline{const Test* const} should not be allowed to execute the \cppinline{test} method as it is a non-const member function. However, \cppinline{Test* const} should.
 This logic can be used to infer, that if \cppinline{a0->test()} compiles, then \cppinline{const std::array<Test*, 1> a0} must be similar to \cppinline{Test* const a0[1]}.
@@ -56,7 +56,7 @@ int main() {
 \subsection{Array parameter conversions}\label{subsec:095disc:arrayParm}
 In \cref{sec:080:035:cstyleArrayParm}, the C-style array converter was augmented to transform functions taking constant sized C-style arrays as parameters into functions that accept \cppinline{std::array}s.
 While the initial transformation from C-style to \cppinline{std::array} parameters may appear reasonable, further examination reveals that it is a more intricate process.
-This complexity arises due to the diverse ways in which C-style array parameters can be used within the language.
+These intricacies arise due to the diverse ways in which C-style array parameters can be used within the language.
 An incomplete list of ways in which C-style arrays can be used in the C++ language is seen below.
 Much of this is related to pointer decay (\cref{subsec:085tool:ast_matching}).
 \vspace*{-0.75em}
@@ -78,7 +78,7 @@ Rather than attempting to refactor the functions themselves, the tool could have
 The transformation is, however, guaranteed to output a valid specification as many of the edge cases can be ignored.
 It would then be possible to develop other tools that implement the transformation of function parameters from C-style arrays to \cppinline{std::array}s.
 
-For instance, one tool can check if all the calls to a given function, which takes a C-style array parameter, are made with \cppinline{data()} methods on \cppinline{std::array}s with the same size. In this scenario, the function parameter could be directly transformed, similar to the current version of the tool. 
+For instance, one tool could check if all the calls to a given function, which takes a C-style array parameter, are made with \cppinline{data()} methods from \cppinline{std::array}s with the same size. In this scenario, the function parameter could be directly transformed, similar to the current version of the tool. 
 Another tool could address cases where the function accepts an incomplete array as a parameter alongside an integral type for bounds-checking purposes (e.g., \cppinline{void func(int arr[], size_t N)}).
 If the value of N can be determined at compile-time for all function invocations, the tool could transform the function into a version that accepts a constantly sized array with the size specified as a template parameter (e.g., \cppinline{template<size_t N> void func(std::array<int, N>& arr)}).
 

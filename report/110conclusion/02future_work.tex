@@ -9,12 +9,12 @@ A proposed example was made by a Danish software consultancy company that wished
 
 
 \subsection*{C-style array tool}
-As discussed in \cref{subsec:095disc:arrayParm}, there are potential benefits associated with altering the implementation of the C-style array tool to avoid directly modifying function declarations.
+As discussed in \cref{subsec:095disc:arrayParm}, there are potential benefits associated with altering the implementation of the C-style array conversion tool to avoid directly modifying function declarations.
 The proposed tool structure presents an interesting topic for future investigation.
 
 \subsection*{Enum-to-string tool}
 In order to further explore different tool structures, the third conceived implementation strategy for the enum-to-string tool (\cref{code:085tool:pseudo_enum3}) could be implemented.
-An assessment of the advantages and disadvantages associated with using such a tool structure could then be conducted.
+An assessment of the advantages and disadvantages associated with using the third structure could then be conducted.
 
 An important edge case was revealed after the project's development phase, which involves the situation where an existing ``to\_string'' function is implemented with a separate definition and declaration.
 In such cases, the tool inadvertently updates the declaration with a definition, resulting in the potential creation of multiple definitions, which would lead to compilation errors.

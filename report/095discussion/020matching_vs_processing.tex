@@ -2,12 +2,12 @@
 
 \section{Finding the correct node types and data methods}
 
-Much of the development time for the C-style array conversion tool and the enum-to-string tool was spent looking through the different AST node types defined in the LibTooling library and determining how the data was represented in the AST.
-This was a long process during the development phase of the project, as the library defines many different class specializations and almost identical node types with vastly different data.
-One example of these difficulties was the extraction of the qualifier for the \cppinline{DeclaratorDecl} in the C-style array conversion tool.
-The qualifier is the explicit namespace in front of the variable declaration, e.g., the qualifier of \cppinline{A::B::C} would be \cppinline{A::B::}.
+Much of the development time for the C-style array conversion tool and the enum-to-string tool was spent looking through the different AST node types to determine how the source-code was represented in the AST.
+This was a long process as the AST defines many different class specializations and almost identical node types with vastly different data.
+One example of these difficulties was the extraction of the qualifier for \cppinline{DeclaratorDecl} nodes in the C-style array conversion tool.
+The qualifier is the explicit namespace in front of a variable declaration, e.g., the qualifier of \cppinline{A::B::C} would be \cppinline{A::B::}.
 This was eventually extracted directly from the source-code through the  \cppinline{getQualifierLoc} method implemented for \cppinline{DeclaratorDecl} nodes, but many other options such as \cppinline{getQualifiedName} method were tried first.
-These small differences between node types and method names took a while to navigate through and because the information is needed both when creating the matchers and when doing the data extraction from the nodes it was the most time-consuming part of creating a tool.
+These small differences between node types and method names took a while to navigate through and were the most time-consuming part of creating a tool.
 It can also be quite hard to even identify which nodes are of interest, as there are so many different ones to choose from.
 In the end, the group developed the tools by figuring out what data was needed, then looking through the existing matchers/nodes in order to find a promising candidate and then trying the method out.
-This method is a systematic form of trial and error and caused some frustration in the process because it is so hard to identify the exact combination of node types and method calls to get the wanted information.
+This method is a systematic form of trial and error and caused some frustration in the process as it is hard to identify the exact combination of node types and method calls to get the needed information.

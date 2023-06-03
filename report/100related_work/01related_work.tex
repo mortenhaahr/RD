@@ -1,11 +1,11 @@
 \chapter{Related work}
 
 The focus of this project has been on deterministic source-code generation using user-provided source-code as the specification. This is, however, not the only methodology of source-code generation.\\
-This chapter is structured by first comparing the project with another source-code generation project developed using LibTooling.
+This chapter is structured by first comparing the project with another source-code generation project developed with LibTooling.
 A comparison is then made to another type of deterministic source-code generation tool that takes a different approach with a smaller set of possible inputs.
 Finally, the project is compared to probabilistic source-code generation tools.
 
-At the 2017 ACCU conference, Sadovnik presented his work on how LibTooling can be used as a deterministic source-code generation tool \cite{sadovnikovUsingClangSource}.
+At the 2017 ACCU conference, Sadovnik presented his work on how LibTooling can be used to develop deterministic source-code generation tools \cite{sadovnikovUsingClangSource}.
 The presentation provides a conceptual overview of the general challenges and possibilities associated with building such tools. I.e., the goal is not to showcase a finished tool that could be used by the public.
 As an example, Sadovnik presents a simpler enum-to-string tool\footnote{
     To compare, their matcher simply consists of \cppinline{enumDecl(isExpansionInMainFile())}.
@@ -18,12 +18,12 @@ Tools such as STM32CubeIDE enable developers to conveniently add startup and con
 The configuration code is pre-written by the manufacturers and it is used to specify the state of the peripherals inside the microcontrollers.\\
 This form of source-code generation is also deterministic but raises the level of abstraction by defining a predetermined set of options. These options serve as the specification instead of the users' code.
 The limited set of options simplifies the number of edge cases that must be considered but at the cost of flexibility.
-In contrast, the tools developed during this project are generic allowing them to be used with any C++ specification, as demonstrated with the JSON library \cite{lohmannJSONModern2022} in \cref{chp:090:tests}.
+In contrast, the tools developed during this project are generic allowing them to be used with any C++ specification, as demonstrated with the JSON library in \cref{chp:090:tests} \cite{lohmannJSONModern2022}.
 
 Another approach to automatic programming and source-code generation is to use tools that are based on a probabilistic model.
 A probabilistic model can be very useful for source-code generation, even though it is non-deterministic \cite{chenEvaluatingLargeLanguage2021}.
-This type of source-code generation is often employed to generate code from natural language (NL)\footnote{
-    An example of a NL could be English.
+This type of source-code generation is often employed to generate code from natural language\footnote{
+    An example of a natural language is English.
 }
 descriptions of problems, as deterministic models can be impractical \cite{alonStructuralLanguageModels2020}.
 Research on probabilistic automatic programming has been ongoing for years and the newest tools in the field are actively being discussed and used by the public \cite{zdnetWhatChatGPTWhy, johnmaedaChoosingLLMModel2023}.

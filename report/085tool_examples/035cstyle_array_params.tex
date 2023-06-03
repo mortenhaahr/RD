@@ -49,7 +49,8 @@ return InnerType.matches(Node.getOriginalType(), Finder, Builder);
     \label{code:085tool_ex:035array_param:match_impl}
 \end{listing}
 
-The \cppinline{Finder} and \cppinline{Builder} variables are common across all matchers. The \cppinline{Finder} variable is the \cppinline{MatchFinder} variable created by the tool, and it is responsible for calling the correct callbacks when a valid match has been found. The \cppinline{Builder} variable is used to bind nodes to specific names through the \cppinline{.bind(NAME)} construct used in the tools.
+The \cppinline{Finder} and \cppinline{Builder} variables are common across all matchers. The \cppinline{Finder} variable is the\\
+\cppinline{MatchFinder} variable created by the tool, and it is responsible for calling the correct callbacks when a valid match has been found. The \cppinline{Builder} variable is used to bind nodes to specific names through the \cppinline{.bind(NAME)} construct used in the tools.
 
 With all the building blocks in place, the C-style array parameter matcher can be constructed. It looks similar to the C-style array matcher and is therefore very expressive. The C-style array parameter matcher can be seen on \cref{code:085tool_ex:035array_param:parm_matcher}.
 
